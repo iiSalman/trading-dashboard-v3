@@ -536,8 +536,10 @@
 
 <script>
   // ── config ──────────────────────────────────────────────────────────
-  const PROXY_BASE = 'https://trading-dashboard-v2.onrender.com';
-  const V2_SNAPSHOT = 'https://iisalman.github.io/trading-dashboard-v2/data/snapshot.json';
+  const PROXY_BASE   = 'https://trading-dashboard-v2.onrender.com';
+  const V2_BASE      = 'https://iisalman.github.io/trading-dashboard-v2';
+  const V2_SNAPSHOT  = `${V2_BASE}/data/snapshot.json`;
+  const V2_TICKER_FN = (t) => `${V2_BASE}/data/tickers/${t}.json`;
   const FETCH_TIMEOUT_MS = 95000;  // accommodate Render cold start
 
   // ── plan / gating ───────────────────────────────────────────────────
@@ -574,9 +576,40 @@
       .then(r => r.ok ? r.json() : r.json().then(b => Promise.reject(new Error(b.error || ('HTTP ' + r.status)))));
   }
   const fetchChart    = (t, range='1d') => fetchJSON(`${PROXY_BASE}/yahoo/chart/${t}?range=${range}`);
-  const fetchOptions  = (t) =>             fetchJSON(`${PROXY_BASE}/yahoo/options/${t}`);
   const fetchDarkpool = (t, days=5) =>     fetchJSON(`${PROXY_BASE}/finra/darkpool/${t}?days=${days}`);
   const fetchSnapshot = () =>              fetchJSON(V2_SNAPSHOT);
+
+  // 3-tier data fetch: GH Pages (watchlist, cron-prefetched) → Tradier
+  // (cold tickers, broker-API reliability) → Yahoo (illiquid OTC fallback).
+  // dataSource is set so the UI can show provenance (Live · GH cron, etc).
+  async function fetchTickerData(t) {
+    // Tier 1: GitHub Pages per-ticker snapshot (only exists for watchlist)
+    try {
+      const d = await fetchJSON(V2_TICKER_FN(t));
+      if (d && (d.expiries?.length || d.candles?.length)) {
+        return { ...d, dataSource: 'GH cron · Yahoo (≤5min)', tier: 1 };
+      }
+    } catch (_) { /* not in watchlist, fall through */ }
+
+    // Tier 2: Tradier Sandbox via Render proxy
+    try {
+      const d = await fetchJSON(`${PROXY_BASE}/tradier/options/${t}`);
+      if (d && d.expiries?.length) {
+        return { ...d, dataSource: 'Tradier Sandbox (15-min delayed)', tier: 2 };
+      }
+    } catch (e) { console.warn('tradier:', e.message); }
+
+    // Tier 3: Yahoo via curl_cffi (often blocked from Render but worth a try)
+    try {
+      const d = await fetchJSON(`${PROXY_BASE}/yahoo/options/${t}`);
+      if (d && d.expiries?.length) {
+        return { ...d, dataSource: 'Yahoo (fallback)', tier: 3 };
+      }
+    } catch (e) { console.warn('yahoo:', e.message); }
+
+    // All tiers failed
+    return null;
+  }
 
   function setState(id, msg, isError=false) {
     const el = document.getElementById(id);
@@ -872,9 +905,8 @@
     // Always fetch the header-strip data (gives Basic users a real-data taste)
     let chartData = null, optsData = null, darkData = null, snapshot = null;
     const tasks = [
-      fetchChart(ticker, '1d').then(d => chartData = d).catch(e => { console.warn('chart 1d:', e.message); }),
-      fetchOptions(ticker)   .then(d => optsData  = d).catch(e => { console.warn('options:', e.message); }),
-      fetchSnapshot()        .then(d => snapshot  = d).catch(e => { console.warn('snapshot:', e.message); }),
+      fetchTickerData(ticker).then(d => optsData = d).catch(e => { console.warn('ticker data:', e.message); }),
+      fetchSnapshot()        .then(d => snapshot = d).catch(e => { console.warn('snapshot:', e.message); }),
     ];
     if (plan === 'pro') {
       tasks.push(fetchDarkpool(ticker, 5).then(d => darkData = d).catch(e => { console.warn('finra:', e.message); }));
@@ -882,7 +914,25 @@
 
     // Render strip ASAP (don't block on slower tasks if possible)
     await Promise.allSettled(tasks);
+
+    // If the per-ticker snapshot (Tier 1) included candles, reuse them and
+    // skip a redundant Yahoo chart hit. Otherwise fetch chart separately.
+    if (optsData && Array.isArray(optsData.candles) && optsData.candles.length) {
+      chartData = {
+        ticker, spot: optsData.spot, previous_close: optsData.previous_close,
+        candles: optsData.candles,
+      };
+    } else {
+      try { chartData = await fetchChart(ticker, '1d'); }
+      catch (e) { console.warn('chart fallback:', e.message); }
+    }
+
     renderStrip(ticker, chartData, optsData, snapshot);
+
+    // Show data provenance in the page footer / a chip somewhere
+    if (optsData && optsData.dataSource) {
+      console.info('[v3 stock] data source:', optsData.dataSource, '(tier', optsData.tier + ')');
+    }
 
     if (plan !== 'pro') {
       // In gated mode, render placeholders only (no further fetches)
