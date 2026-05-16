@@ -620,6 +620,253 @@
       .user-email { display: none; }
       .btn-upgrade { padding: 6px 10px; font-size: 10px; }
     }
+
+    /* ── plan toggle (Basic ⇄ Pro) ── */
+    .plan-toggle {
+      display: inline-flex;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 3px;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.8px;
+      text-transform: uppercase;
+    }
+    .plan-toggle button {
+      background: none; border: none; cursor: pointer;
+      padding: 5px 12px; border-radius: 999px;
+      color: var(--muted); font-family: inherit; font-size: 10px;
+      font-weight: 700; letter-spacing: 0.8px;
+      transition: background .2s, color .2s;
+    }
+    .plan-toggle button.active.basic {
+      background: var(--blue); color: #fff;
+    }
+    .plan-toggle button.active.pro {
+      background: linear-gradient(135deg, #f59e0b, #f97316);
+      color: #0b0f1a;
+    }
+
+    /* ── Pro tier badge (gold) ── */
+    .tier-badge.pro {
+      background: linear-gradient(135deg, rgba(245,158,11,0.18), rgba(239,68,68,0.18));
+      color: var(--yellow);
+      border-color: rgba(245,158,11,0.5);
+    }
+    .tier-badge.pro::before {
+      background: var(--yellow); box-shadow: 0 0 8px var(--yellow);
+    }
+    .user-chip .pro-flag {
+      display: none;
+      background: var(--yellow); color: #0b0f1a;
+      font-size: 9px; font-weight: 800; letter-spacing: 0.8px;
+      padding: 2px 5px; border-radius: 4px; margin-left: 4px;
+    }
+    body.plan-pro .user-chip .pro-flag { display: inline-block; }
+
+    /* show/hide by plan */
+    body.plan-pro .basic-only { display: none !important; }
+    body:not(.plan-pro) .pro-only { display: none !important; }
+
+    /* in Pro mode, hide the Upgrade CTA; show a subtle "Manage plan" link instead */
+    body.plan-pro .btn-upgrade { display: none; }
+    .btn-manage {
+      display: none;
+      background: none; border: 1px solid var(--border);
+      color: var(--muted); padding: 6px 12px; border-radius: 8px;
+      font-family: inherit; font-size: 11px; cursor: pointer;
+      transition: color .2s, border-color .2s;
+    }
+    body.plan-pro .btn-manage { display: inline-flex; align-items: center; gap: 5px; }
+    .btn-manage:hover { color: var(--yellow); border-color: var(--yellow); }
+
+    /* ── Pro panels grid ── */
+    .pro-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+    @media (max-width: 900px) {
+      .pro-grid { grid-template-columns: 1fr; }
+    }
+    .pro-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      position: relative;
+      overflow: hidden;
+      min-height: 220px;
+      display: flex; flex-direction: column;
+    }
+    .pro-panel::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--yellow), var(--red));
+    }
+    .pro-panel-head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .pro-panel-title {
+      font-size: 11px; font-weight: 700; letter-spacing: 1.2px;
+      text-transform: uppercase; color: var(--text);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .pro-panel-title .pro-pill {
+      font-size: 8px; font-weight: 800; letter-spacing: 0.8px;
+      padding: 2px 6px; border-radius: 4px;
+      background: var(--yellow); color: #0b0f1a;
+    }
+    .pro-panel-action {
+      font-size: 10px; color: var(--yellow); font-weight: 700;
+      letter-spacing: 0.8px; text-transform: uppercase;
+      cursor: pointer; background: none; border: none;
+      font-family: inherit;
+    }
+    .pro-panel-action:hover { text-decoration: underline; }
+
+    /* watchlist tabs */
+    .wl-tabs {
+      display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap;
+    }
+    .wl-tab {
+      padding: 5px 10px; border-radius: 6px;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--muted); font-size: 11px; cursor: pointer;
+      font-family: inherit;
+      transition: all .15s;
+    }
+    .wl-tab.active {
+      background: var(--blue-dim); border-color: var(--blue); color: var(--text);
+    }
+    .wl-tab:hover:not(.active) { color: var(--text); }
+    .wl-tickers {
+      display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px;
+      min-height: 28px;
+    }
+    .wl-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 8px; border-radius: 6px;
+      background: var(--surface2); border: 1px solid var(--border);
+      font-size: 11px; font-weight: 600; color: var(--text);
+    }
+    .wl-chip .x {
+      cursor: pointer; color: var(--muted); font-weight: 700;
+      transition: color .15s;
+    }
+    .wl-chip .x:hover { color: var(--red); }
+    .wl-add {
+      display: flex; gap: 6px;
+    }
+    .wl-add input {
+      flex: 1; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; padding: 7px 10px; color: var(--text);
+      font-family: inherit; font-size: 11px;
+      text-transform: uppercase;
+    }
+    .wl-add input:focus {
+      outline: none; border-color: var(--blue);
+    }
+    .wl-add button {
+      background: var(--blue); border: none; color: #fff;
+      padding: 7px 14px; border-radius: 6px; cursor: pointer;
+      font-family: inherit; font-size: 11px; font-weight: 600;
+    }
+    .wl-add button:hover { background: #2563eb; }
+
+    /* alerts */
+    .alert-list {
+      display: flex; flex-direction: column; gap: 8px;
+      flex: 1;
+    }
+    .alert-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 11px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; font-size: 11px;
+    }
+    .alert-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .alert-dot.live { background: var(--green); animation: pulse 2s infinite; }
+    .alert-dot.fired { background: var(--yellow); }
+    .alert-dot.paused { background: var(--gray); }
+    .alert-body { flex: 1; }
+    .alert-rule { color: var(--text); font-weight: 600; margin-bottom: 2px; }
+    .alert-meta { color: var(--muted); font-size: 10px; letter-spacing: 0.3px; }
+    .alert-row .x {
+      color: var(--muted); cursor: pointer; font-weight: 700;
+      padding: 0 4px;
+    }
+    .alert-row .x:hover { color: var(--red); }
+
+    /* backtest */
+    .bt-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .bt-stat {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 9px 11px;
+      text-align: center;
+    }
+    .bt-stat-label {
+      font-size: 9px; color: var(--muted); letter-spacing: 1px;
+      text-transform: uppercase; margin-bottom: 3px;
+    }
+    .bt-stat-val { font-size: 14px; font-weight: 700; color: var(--text); }
+    .bt-stat-val.up { color: var(--green); }
+    .bt-stat-val.down { color: var(--red); }
+    .bt-chart-wrap {
+      flex: 1; min-height: 90px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px;
+      position: relative;
+    }
+
+    /* API */
+    .api-row {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 10px; font-size: 11px;
+    }
+    .api-row .label { color: var(--muted); min-width: 60px; }
+    .api-token {
+      flex: 1; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; padding: 6px 9px;
+      font-family: 'SF Mono', monospace; font-size: 10px;
+      color: var(--text); letter-spacing: 0.5px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .api-copy {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--muted); padding: 5px 9px; border-radius: 6px;
+      cursor: pointer; font-family: inherit; font-size: 10px;
+      transition: all .15s;
+    }
+    .api-copy:hover { color: var(--text); border-color: var(--blue); }
+    .api-copy.copied { color: var(--green); border-color: var(--green); }
+    .api-code {
+      background: #050810; border: 1px solid var(--border);
+      border-radius: 6px; padding: 10px 12px;
+      font-family: 'SF Mono', monospace; font-size: 10px;
+      color: var(--green); white-space: pre; overflow-x: auto;
+      line-height: 1.5;
+      flex: 1;
+    }
+    .api-code .com { color: var(--muted); }
+    .api-code .key { color: var(--yellow); }
+    .api-code .str { color: var(--blue); }
+
+    /* gold accent on Pro tier — tiny ribbon on header in Pro mode */
+    body.plan-pro header::after {
+      content: '';
+      position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--yellow), transparent);
+    }
+    body.plan-pro header { position: relative; }
   </style>
 </head>
 <body>
@@ -659,12 +906,20 @@
       </svg>
       Refresh
     </button>
-    <button class="btn-upgrade" onclick="openPricingModal()" title="See Pro tier features and pricing">
+    <div class="plan-toggle" role="tablist" aria-label="Plan view">
+      <button class="basic" id="toggle-basic" onclick="setPlan('basic')">Basic</button>
+      <button class="pro" id="toggle-pro" onclick="setPlan('pro')">Pro</button>
+    </div>
+    <button class="btn-upgrade" onclick="setPlan('pro')" title="Preview the Pro tier interface">
       ⚡ Upgrade to Pro
+    </button>
+    <button class="btn-manage" onclick="openPricingModal()" title="Manage your subscription">
+      🛡️ Manage Plan
     </button>
     <div class="user-chip" onclick="alert('Account screen coming in the SaaS build — this is a UI preview.')" title="Account (demo)">
       <span class="user-avatar">S</span>
       <span class="user-email">salman@demo</span>
+      <span class="pro-flag">PRO</span>
     </div>
   </div>
 </header>
@@ -783,35 +1038,115 @@
     <canvas id="premChart" height="80"></canvas>
   </div>
 
-  <!-- Locked Pro features -->
-  <div class="section-header">
-    <h2>Pro Features — Locked</h2><hr/>
-    <span style="font-size:10px; color:var(--yellow); letter-spacing:1px; text-transform:uppercase;">⚡ Upgrade $79/mo</span>
+  <!-- Locked Pro features (Basic view only) -->
+  <div class="basic-only">
+    <div class="section-header">
+      <h2>Pro Features — Locked</h2><hr/>
+      <span style="font-size:10px; color:var(--yellow); letter-spacing:1px; text-transform:uppercase;">⚡ Upgrade $79/mo</span>
+    </div>
+    <div class="locked-row">
+      <div class="locked-card" onclick="setPlan('pro')">
+        <span class="lock-icon">🔒</span>
+        <div class="feat-name">Custom Watchlists</div>
+        <div class="feat-desc">Track any US ticker. Build sector-specific lists. Save up to 10 watchlists with per-list scoring filters.</div>
+        <div class="feat-cta">Unlock with Pro →</div>
+      </div>
+      <div class="locked-card" onclick="setPlan('pro')">
+        <span class="lock-icon">🔒</span>
+        <div class="feat-name">Price &amp; Flow Alerts</div>
+        <div class="feat-desc">Get notified when score crosses your threshold, GEX flips negative, or unusual volume spikes. Email + push.</div>
+        <div class="feat-cta">Unlock with Pro →</div>
+      </div>
+      <div class="locked-card" onclick="setPlan('pro')">
+        <span class="lock-icon">🔒</span>
+        <div class="feat-name">Historical Backtest</div>
+        <div class="feat-desc">Replay any past 90 days of GEX/PCR signals against actual price moves. Validate the score before risking capital.</div>
+        <div class="feat-cta">Unlock with Pro →</div>
+      </div>
+      <div class="locked-card" onclick="setPlan('pro')">
+        <span class="lock-icon">🔒</span>
+        <div class="feat-name">API Access</div>
+        <div class="feat-desc">REST + WebSocket endpoints. Stream the score, flow, and Greeks straight into your own bots, sheets, or TradingView.</div>
+        <div class="feat-cta">Unlock with Pro →</div>
+      </div>
+    </div>
   </div>
-  <div class="locked-row">
-    <div class="locked-card" onclick="openPricingModal()">
-      <span class="lock-icon">🔒</span>
-      <div class="feat-name">Custom Watchlists</div>
-      <div class="feat-desc">Track any US ticker. Build sector-specific lists. Save up to 10 watchlists with per-list scoring filters.</div>
-      <div class="feat-cta">Unlock with Pro →</div>
+
+  <!-- Pro Tools (Pro view only) -->
+  <div class="pro-only">
+    <div class="section-header">
+      <h2>Pro Tools</h2><hr/>
+      <span style="font-size:10px; color:var(--yellow); letter-spacing:1px; text-transform:uppercase;">⚡ Pro Active</span>
     </div>
-    <div class="locked-card" onclick="openPricingModal()">
-      <span class="lock-icon">🔒</span>
-      <div class="feat-name">Price &amp; Flow Alerts</div>
-      <div class="feat-desc">Get notified when score crosses your threshold, GEX flips negative, or unusual volume spikes. Email + push.</div>
-      <div class="feat-cta">Unlock with Pro →</div>
-    </div>
-    <div class="locked-card" onclick="openPricingModal()">
-      <span class="lock-icon">🔒</span>
-      <div class="feat-name">Historical Backtest</div>
-      <div class="feat-desc">Replay any past 90 days of GEX/PCR signals against actual price moves. Validate the score before risking capital.</div>
-      <div class="feat-cta">Unlock with Pro →</div>
-    </div>
-    <div class="locked-card" onclick="openPricingModal()">
-      <span class="lock-icon">🔒</span>
-      <div class="feat-name">API Access</div>
-      <div class="feat-desc">REST + WebSocket endpoints. Stream the score, flow, and Greeks straight into your own bots, sheets, or TradingView.</div>
-      <div class="feat-cta">Unlock with Pro →</div>
+    <div class="pro-grid">
+
+      <!-- Custom Watchlists -->
+      <div class="pro-panel">
+        <div class="pro-panel-head">
+          <div class="pro-panel-title">📋 Custom Watchlists <span class="pro-pill">PRO</span></div>
+          <button class="pro-panel-action" onclick="alert('Create-new-watchlist flow coming in production.')">+ New List</button>
+        </div>
+        <div class="wl-tabs" id="wl-tabs"></div>
+        <div class="wl-tickers" id="wl-tickers"></div>
+        <div class="wl-add">
+          <input type="text" id="wl-input" placeholder="Add ticker (e.g. NVDA)" maxlength="6"
+                 onkeydown="if(event.key==='Enter') addWatchlistTicker()" />
+          <button onclick="addWatchlistTicker()">Add</button>
+        </div>
+      </div>
+
+      <!-- Alerts -->
+      <div class="pro-panel">
+        <div class="pro-panel-head">
+          <div class="pro-panel-title">🔔 Price &amp; Flow Alerts <span class="pro-pill">PRO</span></div>
+          <button class="pro-panel-action" onclick="createAlert()">+ Create Alert</button>
+        </div>
+        <div class="alert-list" id="alert-list"></div>
+      </div>
+
+      <!-- Backtest -->
+      <div class="pro-panel">
+        <div class="pro-panel-head">
+          <div class="pro-panel-title">📈 Score Backtest (90d) <span class="pro-pill">PRO</span></div>
+          <button class="pro-panel-action" id="bt-run-btn" onclick="runBacktest()">▶ Run</button>
+        </div>
+        <div class="bt-stats" id="bt-stats">
+          <div class="bt-stat"><div class="bt-stat-label">Win Rate</div><div class="bt-stat-val up" id="bt-win">—</div></div>
+          <div class="bt-stat"><div class="bt-stat-label">Avg Return</div><div class="bt-stat-val up" id="bt-avg">—</div></div>
+          <div class="bt-stat"><div class="bt-stat-label">Sharpe</div><div class="bt-stat-val" id="bt-sharpe">—</div></div>
+          <div class="bt-stat"><div class="bt-stat-label">Trades</div><div class="bt-stat-val" id="bt-trades">—</div></div>
+        </div>
+        <div class="bt-chart-wrap"><canvas id="bt-chart"></canvas></div>
+      </div>
+
+      <!-- API Console -->
+      <div class="pro-panel">
+        <div class="pro-panel-head">
+          <div class="pro-panel-title">⚡ REST + WebSocket API <span class="pro-pill">PRO</span></div>
+          <button class="pro-panel-action" onclick="regenerateApiToken()">↻ Rotate Token</button>
+        </div>
+        <div class="api-row">
+          <span class="label">Endpoint</span>
+          <div class="api-token" id="api-endpoint">https://api.quant-dashboard.io/v1/snapshot</div>
+          <button class="api-copy" onclick="copyApi('api-endpoint', this)">Copy</button>
+        </div>
+        <div class="api-row">
+          <span class="label">Token</span>
+          <div class="api-token" id="api-token">sk_pro_a8f3c91b2e7d4f56a1b9c8e7f2d3a4b5</div>
+          <button class="api-copy" onclick="copyApi('api-token', this)">Copy</button>
+        </div>
+        <div class="api-row" style="align-items:stretch;">
+          <pre class="api-code"><span class="com"># Stream live scores via WebSocket</span>
+<span class="key">import</span> websockets, asyncio, json
+<span class="key">async def</span> stream():
+  url = <span class="str">"wss://api.quant-dashboard.io/v1/stream"</span>
+  hdrs = {<span class="str">"Authorization"</span>: <span class="str">"Bearer sk_pro_..."</span>}
+  <span class="key">async with</span> websockets.connect(url, extra_headers=hdrs) <span class="key">as</span> ws:
+    <span class="key">async for</span> msg <span class="key">in</span> ws:
+      print(json.loads(msg))</pre>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -899,6 +1234,230 @@
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closePricingModal();
   });
+
+  // ── plan switching (Basic ⇄ Pro) ─────────────────────────────────────
+  function getInitialPlan() {
+    const p = new URLSearchParams(location.search).get('plan');
+    if (p === 'pro' || p === 'basic') return p;
+    return localStorage.getItem('v3_plan') || 'basic';
+  }
+  function setPlan(plan, opts) {
+    opts = opts || {};
+    if (plan !== 'pro') plan = 'basic';
+    document.body.classList.toggle('plan-pro', plan === 'pro');
+    // tier badge text + color
+    const badge = document.querySelector('.tier-badge');
+    if (badge) {
+      badge.textContent = plan === 'pro' ? 'Pro Plan' : 'Basic Plan';
+      badge.classList.toggle('pro', plan === 'pro');
+    }
+    // logo subtitle
+    const sub = document.querySelector('.logo-sub');
+    if (sub) sub.textContent = plan === 'pro'
+      ? 'unlimited tickers · real-time · alerts · API'
+      : '25 tickers · real-time options flow';
+    // toggle active class
+    const tb = document.getElementById('toggle-basic');
+    const tp = document.getElementById('toggle-pro');
+    if (tb && tp) {
+      tb.classList.toggle('active', plan === 'basic');
+      tp.classList.toggle('active', plan === 'pro');
+    }
+    // persist + URL (without reload)
+    localStorage.setItem('v3_plan', plan);
+    const url = new URL(location.href);
+    url.searchParams.set('plan', plan);
+    history.replaceState(null, '', url);
+    // first-time Pro entry: render widgets
+    if (plan === 'pro' && !opts.silent) initProWidgets();
+  }
+
+  // ── Pro widget state (mock data, localStorage-backed) ────────────────
+  const DEFAULT_WATCHLISTS = {
+    'Default':   ['SPY','QQQ','NVDA','AAPL','TSLA'],
+    'AI / Chips':['NVDA','AVGO','AMD','SMCI','MU','PANW'],
+    'Mega Cap':  ['AAPL','MSFT','GOOGL','AMZN','META'],
+    'Earnings':  ['BABA','BA','INTC','SNDK']
+  };
+  let activeWl = 'Default';
+  let watchlists = null;
+
+  function loadWatchlists() {
+    if (watchlists) return watchlists;
+    try {
+      const raw = localStorage.getItem('v3_watchlists');
+      watchlists = raw ? JSON.parse(raw) : structuredClone(DEFAULT_WATCHLISTS);
+    } catch (_) { watchlists = structuredClone(DEFAULT_WATCHLISTS); }
+    return watchlists;
+  }
+  function saveWatchlists() {
+    localStorage.setItem('v3_watchlists', JSON.stringify(watchlists));
+  }
+  function renderWatchlists() {
+    loadWatchlists();
+    const tabsEl = document.getElementById('wl-tabs');
+    const tickersEl = document.getElementById('wl-tickers');
+    if (!tabsEl || !tickersEl) return;
+    tabsEl.innerHTML = '';
+    Object.keys(watchlists).forEach(name => {
+      const b = document.createElement('button');
+      b.className = 'wl-tab' + (name === activeWl ? ' active' : '');
+      b.textContent = name + ' (' + watchlists[name].length + ')';
+      b.onclick = () => { activeWl = name; renderWatchlists(); };
+      tabsEl.appendChild(b);
+    });
+    tickersEl.innerHTML = '';
+    (watchlists[activeWl] || []).forEach(t => {
+      const chip = document.createElement('span');
+      chip.className = 'wl-chip';
+      chip.innerHTML = t + ' <span class="x">×</span>';
+      chip.querySelector('.x').onclick = () => {
+        watchlists[activeWl] = watchlists[activeWl].filter(x => x !== t);
+        saveWatchlists(); renderWatchlists();
+      };
+      tickersEl.appendChild(chip);
+    });
+  }
+  function addWatchlistTicker() {
+    const inp = document.getElementById('wl-input');
+    const t = (inp.value || '').trim().toUpperCase();
+    if (!t || !/^[A-Z]{1,5}$/.test(t)) { inp.focus(); return; }
+    loadWatchlists();
+    if (!watchlists[activeWl].includes(t)) {
+      watchlists[activeWl].push(t);
+      saveWatchlists();
+    }
+    inp.value = '';
+    renderWatchlists();
+  }
+
+  // alerts
+  const DEFAULT_ALERTS = [
+    { rule: 'SPY GEX flips negative',         meta: 'live · email + push',           status: 'live'  },
+    { rule: 'NVDA score ≥ 4',                 meta: 'live · email',                  status: 'live'  },
+    { rule: 'AAPL unusual vol > 0.6',         meta: 'fired 2h ago · 1 trigger',      status: 'fired' },
+    { rule: 'QQQ P/C ratio > 1.4',            meta: 'paused',                        status: 'paused'},
+  ];
+  let alerts = null;
+  function loadAlerts() {
+    if (alerts) return alerts;
+    try {
+      const raw = localStorage.getItem('v3_alerts');
+      alerts = raw ? JSON.parse(raw) : structuredClone(DEFAULT_ALERTS);
+    } catch (_) { alerts = structuredClone(DEFAULT_ALERTS); }
+    return alerts;
+  }
+  function renderAlerts() {
+    loadAlerts();
+    const el = document.getElementById('alert-list');
+    if (!el) return;
+    el.innerHTML = '';
+    alerts.forEach((a, i) => {
+      const row = document.createElement('div');
+      row.className = 'alert-row';
+      row.innerHTML =
+        '<span class="alert-dot ' + a.status + '"></span>' +
+        '<div class="alert-body">' +
+          '<div class="alert-rule"></div>' +
+          '<div class="alert-meta"></div>' +
+        '</div>' +
+        '<span class="x" title="Delete">×</span>';
+      row.querySelector('.alert-rule').textContent = a.rule;
+      row.querySelector('.alert-meta').textContent = a.meta;
+      row.querySelector('.x').onclick = () => {
+        alerts.splice(i, 1);
+        localStorage.setItem('v3_alerts', JSON.stringify(alerts));
+        renderAlerts();
+      };
+      el.appendChild(row);
+    });
+    if (!alerts.length) {
+      el.innerHTML = '<div style="color:var(--muted); font-size:11px; padding:10px 0;">No active alerts — click + Create Alert to add one.</div>';
+    }
+  }
+  function createAlert() {
+    const rule = prompt('Alert rule (free-form preview)\nExamples:\n  • TSLA score ≥ 4\n  • SPY GEX flips negative\n  • NVDA unusual vol > 0.5');
+    if (!rule) return;
+    loadAlerts();
+    alerts.unshift({ rule: rule.trim(), meta: 'live · email + push (mock)', status: 'live' });
+    localStorage.setItem('v3_alerts', JSON.stringify(alerts));
+    renderAlerts();
+  }
+
+  // backtest — generate plausible-looking equity curve
+  let btChart = null;
+  function runBacktest() {
+    const btn = document.getElementById('bt-run-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Running…'; }
+    // simulate compute
+    setTimeout(() => {
+      const days = 90;
+      const labels = Array.from({length: days}, (_, i) => 'D-' + (days - i));
+      // bias upward random walk
+      let v = 100;
+      const series = [v];
+      for (let i = 1; i < days; i++) {
+        v += (Math.random() - 0.42) * 1.6;
+        series.push(+v.toFixed(2));
+      }
+      const totalRet = ((series[series.length-1] - 100) / 100) * 100;
+      const wins = series.filter((p, i) => i > 0 && p > series[i-1]).length;
+      const winRate = (wins / (days-1) * 100);
+      const trades = Math.floor(days * 0.7);
+      const sharpe = 1.2 + Math.random() * 0.8;
+      document.getElementById('bt-win').textContent = winRate.toFixed(1) + '%';
+      document.getElementById('bt-avg').textContent = (totalRet >= 0 ? '+' : '') + totalRet.toFixed(1) + '%';
+      document.getElementById('bt-avg').className = 'bt-stat-val ' + (totalRet >= 0 ? 'up' : 'down');
+      document.getElementById('bt-sharpe').textContent = sharpe.toFixed(2);
+      document.getElementById('bt-trades').textContent = String(trades);
+
+      const ctx = document.getElementById('bt-chart');
+      if (btChart) btChart.destroy();
+      btChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets: [{
+          data: series,
+          borderColor: totalRet >= 0 ? '#10b981' : '#ef4444',
+          backgroundColor: totalRet >= 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+          borderWidth: 1.5, fill: true, pointRadius: 0, tension: 0.25
+        }]},
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { enabled: true } },
+          scales: {
+            x: { display: false },
+            y: { display: false, beginAtZero: false }
+          }
+        }
+      });
+      if (btn) { btn.disabled = false; btn.textContent = '▶ Re-run'; }
+    }, 600);
+  }
+
+  // API helpers
+  function copyApi(id, btn) {
+    const txt = document.getElementById(id).textContent;
+    navigator.clipboard.writeText(txt).then(() => {
+      btn.textContent = '✓ Copied';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+  function regenerateApiToken() {
+    const hex = '0123456789abcdef';
+    let t = 'sk_pro_';
+    for (let i = 0; i < 32; i++) t += hex[Math.floor(Math.random() * 16)];
+    document.getElementById('api-token').textContent = t;
+  }
+
+  let proInitialized = false;
+  function initProWidgets() {
+    if (proInitialized) return;
+    proInitialized = true;
+    renderWatchlists();
+    renderAlerts();
+    runBacktest();
+  }
 
   let premChart = null;
   const REFRESH_INTERVAL = 90;
@@ -1393,6 +1952,8 @@
   }
 
   // Boot
+  setPlan(getInitialPlan(), { silent: true });
+  if (document.body.classList.contains('plan-pro')) initProWidgets();
   fetchData(false).then(() => { startCountdown(); startAgeTicker(); });
 </script>
 </body>
