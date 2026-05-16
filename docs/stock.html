@@ -878,7 +878,7 @@
   function renderDarkPoolWeek(ticker, darkData) {
     setState('s6', '', false);
     if (!darkData || !darkData.days || !darkData.days.length) {
-      setState('s6', 'FINRA Reg-SHO data unavailable for this ticker yet. (Files publish T+1; very illiquid or just-IPO\\'d names may have no rows.)', true);
+      setState('s6', "FINRA Reg-SHO data unavailable for this ticker yet. (Files publish T+1; very illiquid or just-IPO'd names may have no rows.)", true);
       return;
     }
     const labels = darkData.days.map(d => d.date.slice(5));
