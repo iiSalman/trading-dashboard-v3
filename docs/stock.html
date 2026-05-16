@@ -544,6 +544,12 @@
 
   // ── plan / gating ───────────────────────────────────────────────────
   function getPlan() {
+    // URL param wins (matches index.html behaviour); else localStorage; else basic.
+    const p = new URLSearchParams(location.search).get('plan');
+    if (p === 'pro' || p === 'basic') {
+      localStorage.setItem('v3_plan', p);  // sync so back-nav to main view agrees
+      return p;
+    }
     return localStorage.getItem('v3_plan') === 'pro' ? 'pro' : 'basic';
   }
   function applyPlanUI() {
@@ -902,21 +908,36 @@
 
     const plan = getPlan();
 
-    // Always fetch the header-strip data (gives Basic users a real-data taste)
-    let chartData = null, optsData = null, darkData = null, snapshot = null;
-    const tasks = [
-      fetchTickerData(ticker).then(d => optsData = d).catch(e => { console.warn('ticker data:', e.message); }),
-      fetchSnapshot()        .then(d => snapshot = d).catch(e => { console.warn('snapshot:', e.message); }),
-    ];
-    if (plan === 'pro') {
-      tasks.push(fetchDarkpool(ticker, 5).then(d => darkData = d).catch(e => { console.warn('finra:', e.message); }));
+    // In Basic mode, short-circuit: don't even fetch — show the upgrade
+    // overlay and a dimmed strip with whatever the snapshot has.
+    if (plan !== 'pro') {
+      try {
+        const snap = await fetchSnapshot();
+        renderStrip(ticker, null, null, snap);
+      } catch (_) {
+        renderStrip(ticker, null, null, null);
+      }
+      ['s1','s2','s3','s4','s5','s6'].forEach(id => setState(id, '· · ·'));
+      return;
     }
 
-    // Render strip ASAP (don't block on slower tasks if possible)
-    await Promise.allSettled(tasks);
+    // Pro mode: snapshot + per-ticker JSON are the fast path (both GH Pages).
+    // Kick darkpool off in parallel but DO NOT block the rest of the page
+    // on its (potentially cold-Render) response.
+    let snapshot = null;
+    const snapPromise = fetchSnapshot().then(d => snapshot = d).catch(e => console.warn('snapshot:', e.message));
+    const darkPromise = fetchDarkpool(ticker, 5).catch(e => { console.warn('finra:', e.message); return null; });
 
-    // If the per-ticker snapshot (Tier 1) included candles, reuse them and
-    // skip a redundant Yahoo chart hit. Otherwise fetch chart separately.
+    // Fast path: ticker data (Tier 1 = GH Pages, sub-second).
+    let optsData = null;
+    try {
+      optsData = await fetchTickerData(ticker);
+    } catch (e) {
+      console.warn('ticker data:', e.message);
+    }
+
+    // Build chartData from embedded candles when present; else fall back.
+    let chartData = null;
     if (optsData && Array.isArray(optsData.candles) && optsData.candles.length) {
       chartData = {
         ticker, spot: optsData.spot, previous_close: optsData.previous_close,
@@ -927,25 +948,33 @@
       catch (e) { console.warn('chart fallback:', e.message); }
     }
 
+    // Wait briefly for the snapshot so renderStrip can include the friendly
+    // name. If it's not back yet, render without it; snapshot fill-in is cheap.
+    await snapPromise;
     renderStrip(ticker, chartData, optsData, snapshot);
 
-    // Show data provenance in the page footer / a chip somewhere
     if (optsData && optsData.dataSource) {
       console.info('[v3 stock] data source:', optsData.dataSource, '(tier', optsData.tier + ')');
     }
 
-    if (plan !== 'pro') {
-      // In gated mode, render placeholders only (no further fetches)
-      ['s1','s2','s3','s4','s5','s6'].forEach(id => setState(id, '· · ·'));
-      return;
+    if (!optsData || !optsData.expiries || !optsData.expiries.length) {
+      // Tier 1/2/3 all failed for this ticker — set explicit error on
+      // each panel so user sees something other than "loading…".
+      const msg = 'No options data available for this ticker (free feeds limited; Pro tier in production uses Theta Data).';
+      ['s1','s2','s3','s4'].forEach(id => setState(id, msg, true));
+    } else {
+      renderFlowToday(optsData);
+      renderFlowWeek(ticker, optsData);
+      renderHeatmap('h3', optsData, 'vol');
+      renderHeatmap('h4', optsData, 'oi');
     }
 
-    // Charts
-    renderFlowToday(optsData);
-    renderFlowWeek(ticker, optsData);
-    renderHeatmap('h3', optsData, 'vol');
-    renderHeatmap('h4', optsData, 'oi');
+    // Chart 5 always renders (demo with candle-seeded magnitude)
     renderDarkPoolToday(ticker, chartData);
+
+    // Chart 6: render placeholder text while waiting for FINRA, then swap.
+    setState('s6', 'Loading FINRA Reg-SHO (~30s if cold)…');
+    const darkData = await darkPromise;
     renderDarkPoolWeek(ticker, darkData);
   }
 

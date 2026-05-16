@@ -1521,10 +1521,13 @@
     } catch (_) {}
     return out;
   }
+  // Search is locked to the 25 watchlist tickers (Tier-1 GH-cron-prefetched
+  // data). Free-text any-stock search is gated as a future feature so users
+  // never land on a "feed unavailable" stock detail page.
   function _navigateToStock(t) {
     t = (t || '').trim().toUpperCase();
-    if (!t || !/^[A-Z]{1,5}([.\-][A-Z])?$/.test(t)) return;
-    location.href = './stock.html?ticker=' + encodeURIComponent(t);
+    if (!t || !_allTickers().includes(t)) return;
+    location.href = './stock.html?ticker=' + encodeURIComponent(t) + '&plan=' + (getInitialPlan() || 'pro');
   }
   let _acIdx = -1;
   function onSearchInput(v) {
@@ -1539,9 +1542,10 @@
         <span class="ac-ticker">${t}</span><span class="ac-sub">in watchlist</span>
       </div>`;
     });
+    // Honest "coming soon" row for any non-watchlist input (no navigation).
     if (/^[A-Z]{1,5}([.\-][A-Z])?$/.test(v) && !hits.includes(v)) {
-      html += `<div class="search-ac-row" onmousedown="_navigateToStock('${v}')">
-        <span class="ac-ticker">→ ${v}</span><span class="ac-sub">any US stock</span>
+      html += `<div class="search-ac-row" style="opacity:0.65; cursor:default;" onmousedown="event.preventDefault();">
+        <span class="ac-ticker" style="color:var(--muted);">${v}</span><span class="ac-sub">not in watchlist · any-stock search coming soon</span>
       </div>`;
     }
     if (!html) { ac.classList.remove('open'); ac.innerHTML = ''; _acIdx = -1; return; }
@@ -1902,7 +1906,7 @@
     tbody.innerHTML = tickers.map(t => {
       if (t.error && !t.price) {
         return `<tr>
-          <td class="td-ticker"><a href="./stock.html?ticker=${t.ticker}" class="ticker-link" title="Open stock detail (Pro)">${t.ticker}</a></td>
+          <td class="td-ticker"><a href="./stock.html?ticker=${t.ticker}&plan=${document.body.classList.contains('plan-pro') ? 'pro' : 'basic'}" class="ticker-link" title="Open stock detail">${t.ticker}</a></td>
           <td colspan="12" class="error-tag">Error: ${t.error}</td>
         </tr>`;
       }
@@ -1920,7 +1924,7 @@
       const chgCls = t.change >= 0 ? 'up' : 'down';
       const pcrVal = t.pcr_vol;
       return `<tr>
-        <td class="td-ticker"><a href="./stock.html?ticker=${t.ticker}" class="ticker-link" title="Open stock detail (Pro)">${t.ticker}</a></td>
+        <td class="td-ticker"><a href="./stock.html?ticker=${t.ticker}&plan=${document.body.classList.contains('plan-pro') ? 'pro' : 'basic'}" class="ticker-link" title="Open stock detail">${t.ticker}</a></td>
         <td class="td-price">$${fmt(t.price)}</td>
         <td class="td-change ${chgCls}">${t.change >= 0 ? '+' : ''}${t.change}%</td>
         <td class="td-score"><span class="score-badge score-${sc}">${sc}</span></td>
