@@ -399,6 +399,13 @@
     </div>
   </div>
 
+  <div id="data-status" style="margin-bottom:14px; padding:8px 14px; border-radius:8px;
+       background:var(--surface); border:1px solid var(--border);
+       font-size:11px; color:var(--muted); display:flex; align-items:center; gap:8px;">
+    <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--yellow);" id="data-status-dot"></span>
+    <span id="data-status-text">initialising…</span>
+  </div>
+
   <div id="charts-wrap">
 
     <!-- Row 1 — FLOW -->
@@ -462,14 +469,6 @@
         <div class="chart-canvas-wrap"><canvas id="c6"></canvas><div class="chart-state" id="s6">loading…</div></div>
         <div class="chart-foot">Daily consolidated short volume from FINRA Reg-SHO files — free, T+1 publish. Proxy for off-exchange interest at daily granularity.</div>
       </div>
-    </div>
-
-    <!-- Basic-mode gate overlay -->
-    <div class="upgrade-overlay">
-      <div class="lock-emoji">🔒</div>
-      <h3>Stock Detail is a Pro Feature</h3>
-      <p>Per-stock options flow, strike heatmaps, and dark-pool activity are part of the Pro plan. Upgrade for unlimited stock lookups + real-time charts.</p>
-      <button class="btn-up" onclick="openPricingModal()">⚡ Upgrade to Pro — $79/mo</button>
     </div>
 
   </div>
@@ -543,27 +542,26 @@
   const FETCH_TIMEOUT_MS = 95000;  // accommodate Render cold start
 
   // ── plan / gating ───────────────────────────────────────────────────
+  // Detail view is open to all plans for now — no charts blurred, no upgrade
+  // overlay. We still surface the plan in the badge for visual consistency.
   function getPlan() {
-    // URL param wins (matches index.html behaviour); else localStorage; else basic.
     const p = new URLSearchParams(location.search).get('plan');
     if (p === 'pro' || p === 'basic') {
-      localStorage.setItem('v3_plan', p);  // sync so back-nav to main view agrees
+      localStorage.setItem('v3_plan', p);
       return p;
     }
     return localStorage.getItem('v3_plan') === 'pro' ? 'pro' : 'basic';
   }
   function applyPlanUI() {
     const plan = getPlan();
-    document.body.classList.toggle('gated', plan !== 'pro');
+    document.body.classList.remove('gated');   // always show full detail
     const badge = document.getElementById('tier-badge');
     if (badge) {
       badge.textContent = plan === 'pro' ? 'Pro Plan' : 'Basic Plan';
       badge.classList.toggle('pro', plan === 'pro');
     }
     const sub = document.getElementById('logo-sub');
-    if (sub) sub.textContent = plan === 'pro'
-      ? 'Pro · per-stock deep dive'
-      : 'Stock Detail (Pro only)';
+    if (sub) sub.textContent = 'Per-stock deep dive · open access';
   }
 
   function openPricingModal() {
@@ -615,6 +613,13 @@
 
     // All tiers failed
     return null;
+  }
+
+  function setStatus(text, color) {
+    const t = document.getElementById('data-status-text');
+    const d = document.getElementById('data-status-dot');
+    if (t) t.textContent = text;
+    if (d) d.style.background = color || 'var(--yellow)';
   }
 
   function setState(id, msg, isError=false) {
@@ -906,24 +911,10 @@
     }
     document.title = ticker + ' — Stock Detail · Quant Dashboard v3';
 
-    const plan = getPlan();
+    setStatus('fetching…');
 
-    // In Basic mode, short-circuit: don't even fetch — show the upgrade
-    // overlay and a dimmed strip with whatever the snapshot has.
-    if (plan !== 'pro') {
-      try {
-        const snap = await fetchSnapshot();
-        renderStrip(ticker, null, null, snap);
-      } catch (_) {
-        renderStrip(ticker, null, null, null);
-      }
-      ['s1','s2','s3','s4','s5','s6'].forEach(id => setState(id, '· · ·'));
-      return;
-    }
-
-    // Pro mode: snapshot + per-ticker JSON are the fast path (both GH Pages).
-    // Kick darkpool off in parallel but DO NOT block the rest of the page
-    // on its (potentially cold-Render) response.
+    // Detail view is now open to all plans. Kick fetches in parallel; render
+    // each chart as soon as its data lands. Don't await darkpool (slow, Render).
     let snapshot = null;
     const snapPromise = fetchSnapshot().then(d => snapshot = d).catch(e => console.warn('snapshot:', e.message));
     const darkPromise = fetchDarkpool(ticker, 5).catch(e => { console.warn('finra:', e.message); return null; });
@@ -932,8 +923,14 @@
     let optsData = null;
     try {
       optsData = await fetchTickerData(ticker);
+      if (optsData) {
+        setStatus(`options: ${optsData.dataSource}`, 'var(--green)');
+      } else {
+        setStatus('options: no free source has data for this ticker', 'var(--red)');
+      }
     } catch (e) {
       console.warn('ticker data:', e.message);
+      setStatus('options fetch failed: ' + e.message, 'var(--red)');
     }
 
     // Build chartData from embedded candles when present; else fall back.
@@ -976,6 +973,14 @@
     setState('s6', 'Loading FINRA Reg-SHO (~30s if cold)…');
     const darkData = await darkPromise;
     renderDarkPoolWeek(ticker, darkData);
+
+    // Final status — concise summary of what landed
+    const okOptions = !!(optsData && optsData.expiries && optsData.expiries.length);
+    const okFinra   = !!(darkData && darkData.days && darkData.days.length);
+    setStatus(
+      `done · options: ${okOptions ? '✓ '+optsData.dataSource : '✗'} · FINRA dark-pool: ${okFinra ? '✓ '+darkData.days.length+' days' : '✗ no rows (free feed lag)'}`,
+      okOptions ? 'var(--green)' : 'var(--yellow)'
+    );
   }
 
   boot();
