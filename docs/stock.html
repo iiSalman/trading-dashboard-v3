@@ -825,24 +825,32 @@
       });
     });
 
-    // 3-stop sequential color ramp so the eye can immediately spot hot strikes:
-    //   intensity 0.00 – 0.05  → nearly transparent (cold / empty)
-    //   intensity 0.05 – 0.35  → cool blue
-    //   intensity 0.35 – 0.70  → warm yellow
-    //   intensity 0.70 – 1.00  → hot red
-    // Text stays white for legibility against every band.
-    function _heat(intensity) {
-      if (intensity < 0.05) return { bg: 'rgba(26,34,53,0.35)', txt: 'rgba(148,163,184,0.55)' };
-      if (intensity < 0.35) {
-        const a = 0.25 + intensity * 0.9;   // 0.25 → 0.57
-        return { bg: `rgba(59,130,246,${a.toFixed(2)})`, txt: '#e2e8f0' };
-      }
-      if (intensity < 0.70) {
-        const a = 0.55 + (intensity - 0.35) * 1.1;  // 0.55 → 0.94
-        return { bg: `rgba(245,158,11,${a.toFixed(2)})`, txt: '#0b0f1a' };
-      }
-      const a = 0.75 + (intensity - 0.70) * 0.85;   // 0.75 → 1.00
-      return { bg: `rgba(239,68,68,${a.toFixed(2)})`, txt: '#fff' };
+    // Find the SINGLE hottest cell per expiry — that's the only one we
+    // highlight visually. Everything else stays muted/uniform so the eye
+    // isn't pulled in 20 directions at once.
+    const topPerExp = {};   // expiryIdx → { K, v }
+    exps.forEach((_, ei) => {
+      let topK = null, topV = 0;
+      strikes.forEach(K => {
+        const v = cells[K + '|' + ei] || 0;
+        if (v > topV) { topV = v; topK = K; }
+      });
+      topPerExp[ei] = { K: topK, v: topV };
+    });
+    // Single global champion across all expiries — gets the strongest call-out
+    let champion = { K: null, ei: null, v: 0 };
+    Object.entries(topPerExp).forEach(([ei, t]) => {
+      if (t.v > champion.v) champion = { K: t.K, ei: +ei, v: t.v };
+    });
+
+    function _cellStyle(v, isTopPerExp, isChampion) {
+      if (v <= 0) return { bg: 'rgba(26,34,53,0.25)', txt: 'rgba(148,163,184,0.35)', weight: 400 };
+      if (isChampion) return { bg: 'rgba(245,158,11,0.95)', txt: '#0b0f1a', weight: 800 };
+      if (isTopPerExp) return { bg: 'rgba(245,158,11,0.35)', txt: '#f59e0b', weight: 700 };
+      // Everything else: same subtle dark-blue, very faint opacity scaling
+      const intensity = maxVal > 0 ? v / maxVal : 0;
+      const a = 0.15 + Math.min(0.20, intensity * 0.6);
+      return { bg: `rgba(59,130,246,${a.toFixed(2)})`, txt: 'rgba(226,232,240,0.85)', weight: 500 };
     }
 
     // Render CSS grid: 1 header col (strike) + N expiry cols, header row + strike rows
@@ -851,33 +859,44 @@
     let html = '<div class="hm-cell hdr">Strike</div>';
     exps.forEach(e => html += `<div class="hm-cell hdr">${e.date.slice(5)}</div>`);
 
-    // Strikes top-to-bottom: highest strike at top (so visually intuitive)
     [...strikes].reverse().forEach(K => {
       const isSpot = spot && Math.abs(K - spot) === Math.min(...strikes.map(x => Math.abs(x - spot)));
-      const strikeColor = isSpot ? 'color:var(--blue);font-weight:700' : 'color:#e2e8f0';
-      html += `<div class="hm-cell hdr" style="text-align:right; padding-right:6px;${strikeColor}">${K}</div>`;
+      const strikeColor = isSpot ? 'color:var(--blue);font-weight:700' : 'color:#cbd5e1';
+      html += `<div class="hm-cell hdr" style="text-align:right; padding-right:6px;${strikeColor}">${K}${isSpot ? ' ◂' : ''}</div>`;
       exps.forEach((exp, ei) => {
         const v = cells[K + '|' + ei] || 0;
-        const intensity = maxVal > 0 ? Math.pow(v / maxVal, 0.6) : 0;
-        const { bg, txt: tc } = _heat(intensity);
-        const txt = v > 0 ? fmtNum(v) : '·';
-        const tooltip = `${K} · ${exp.date} · ${v.toLocaleString()}`;
-        html += `<div class="hm-cell ${isSpot ? 'spot' : ''}" style="background:${bg}; color:${tc};" title="${tooltip}">${txt}</div>`;
+        const isTop = (topPerExp[ei].K === K) && v > 0;
+        const isChamp = (champion.K === K && champion.ei === ei) && v > 0;
+        const { bg, txt: tc, weight } = _cellStyle(v, isTop, isChamp);
+        const txt = v > 0 ? (isChamp ? '⚡ ' + fmtNum(v) : fmtNum(v)) : '·';
+        const tooltip = `${K} · ${exp.date} · ${v.toLocaleString()} ${mode === 'vol' ? 'contracts traded today' : 'open contracts'}`;
+        html += `<div class="hm-cell ${isSpot ? 'spot' : ''}" style="background:${bg}; color:${tc}; font-weight:${weight};" title="${tooltip}">${txt}</div>`;
       });
     });
-    // Tiny color legend strip below the grid
-    html += `<div style="grid-column: 1 / -1; display:flex; align-items:center; gap:8px;
-              margin-top:6px; padding-top:8px; border-top:1px solid var(--border);
-              font-size:9px; color:var(--muted); letter-spacing:0.6px; text-transform:uppercase;">
-      <span>cold</span>
-      <div style="flex:1; height:8px; border-radius:2px; background:
-        linear-gradient(90deg,
-          rgba(26,34,53,0.35) 0%,
-          rgba(59,130,246,0.55) 33%,
-          rgba(245,158,11,0.85) 66%,
-          rgba(239,68,68,1) 100%);"></div>
-      <span>hot</span>
-      <span style="margin-left:6px; color:var(--blue);">▭ spot</span>
+
+    // Plain-English insight sentence — the actual takeaway for a casual reader.
+    let insight = '';
+    if (champion.K && champion.v > 0 && spot) {
+      const diff = champion.K - spot;
+      const pctAway = (diff / spot) * 100;
+      const dir = diff > 0 ? 'above' : 'below';
+      const moodVol = diff > 0 ? 'traders are positioning for an upside move' : 'traders are positioning for a downside move';
+      const moodOI = diff > 0 ? 'most existing bets are on price moving up' : 'most existing bets are on price moving down';
+      const mood = mode === 'vol' ? moodVol : moodOI;
+      const label = mode === 'vol' ? "Today's heaviest action" : "Biggest open positions";
+      insight = `<b style="color:var(--yellow);">${label}:</b> strike <b>$${champion.K}</b> (${champion.v.toLocaleString()} ${mode === 'vol' ? 'contracts traded' : 'contracts open'}) — that's ${Math.abs(pctAway).toFixed(1)}% ${dir} the current price of $${spot.toFixed(2)}, suggesting ${mood}.`;
+    } else if (champion.K && champion.v > 0) {
+      insight = `<b style="color:var(--yellow);">Most active strike:</b> $${champion.K} with ${champion.v.toLocaleString()} contracts.`;
+    } else {
+      insight = `<span style="color:var(--muted);">No notable strike activity to highlight yet.</span>`;
+    }
+    html += `<div style="grid-column: 1 / -1; margin-top:8px; padding-top:8px;
+              border-top:1px solid var(--border);
+              font-size:11px; color:var(--text); line-height:1.55;">
+      ${insight}
+      <div style="margin-top:4px; font-size:10px; color:var(--muted);">
+        ⚡ = single most-active cell · <span style="color:var(--yellow)">orange tint</span> = top per expiry · <span style="color:var(--blue)">▭ blue outline</span> = current price
+      </div>
     </div>`;
     el.innerHTML = html;
   }
