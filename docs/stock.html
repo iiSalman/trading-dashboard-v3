@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stock Detail — Quant Dashboard v3</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg:        #0b0f1a;
+      --surface:   #111827;
+      --surface2:  #1a2235;
+      --border:    #1f2d42;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --green:     #10b981;
+      --green-dim: #064e3b;
+      --red:       #ef4444;
+      --red-dim:   #7f1d1d;
+      --yellow:    #f59e0b;
+      --yellow-dim:#78350f;
+      --blue:      #3b82f6;
+      --blue-dim:  #1e3a5f;
+      --purple:    #8b5cf6;
+      --gray:      #6b7280;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: 'SF Mono','Fira Code','Fira Mono',monospace;
+      min-height: 100vh; font-size: 13px;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-icon {
+      width: 32px; height: 32px; background: var(--blue);
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 700; color: #fff;
+    }
+    .logo-text { font-size: 15px; font-weight: 600; letter-spacing: 0.5px; }
+    .logo-sub  { font-size: 11px; color: var(--muted); }
+    .header-right { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .back-link {
+      color: var(--muted); text-decoration: none; font-size: 11px;
+      padding: 6px 11px; border-radius: 6px; border: 1px solid var(--border);
+      transition: all .15s;
+    }
+    .back-link:hover { color: var(--blue); border-color: var(--blue); }
+    .tier-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 9px; border-radius: 6px;
+      font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+      background: rgba(59,130,246,0.14); color: var(--blue);
+      border: 1px solid rgba(59,130,246,0.3); text-transform: uppercase;
+    }
+    .tier-badge::before {
+      content: ''; width: 5px; height: 5px; border-radius: 50%;
+      background: var(--blue); box-shadow: 0 0 6px var(--blue);
+    }
+    .tier-badge.pro {
+      background: linear-gradient(135deg, rgba(245,158,11,0.18), rgba(239,68,68,0.18));
+      color: var(--yellow); border-color: rgba(245,158,11,0.5);
+    }
+    .tier-badge.pro::before {
+      background: var(--yellow); box-shadow: 0 0 8px var(--yellow);
+    }
+    .user-chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 5px 10px 5px 5px; border-radius: 999px;
+      background: var(--surface2); border: 1px solid var(--border);
+      font-size: 11px; color: var(--text);
+    }
+    .user-avatar {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--blue), var(--purple));
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; color: #fff;
+    }
+
+    /* ── LAYOUT ── */
+    main { padding: 20px 24px 40px; max-width: 1400px; margin: 0 auto; }
+
+    /* ── STOCK STRIP ── */
+    .stock-strip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 22px 26px;
+      margin-bottom: 22px;
+      display: grid;
+      grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;
+      gap: 24px; align-items: center;
+    }
+    @media (max-width: 900px) {
+      .stock-strip { grid-template-columns: 1fr 1fr 1fr; }
+    }
+    .strip-main .strip-ticker {
+      font-size: 24px; font-weight: 700; letter-spacing: 1px;
+      color: var(--text);
+    }
+    .strip-main .strip-name {
+      font-size: 11px; color: var(--muted); margin-top: 2px;
+    }
+    .strip-stat .label {
+      font-size: 9px; color: var(--muted); letter-spacing: 1.2px;
+      text-transform: uppercase; margin-bottom: 4px;
+    }
+    .strip-stat .val { font-size: 18px; font-weight: 700; color: var(--text); }
+    .strip-stat .val.up { color: var(--green); }
+    .strip-stat .val.down { color: var(--red); }
+    .strip-stat .sub { font-size: 10px; color: var(--muted); margin-top: 3px; }
+
+    /* ── PRO PANELS (6-chart grid) ── */
+    .section-header {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 14px; margin-top: 6px;
+    }
+    .section-header h2 {
+      font-size: 11px; font-weight: 600; letter-spacing: 1.5px;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .section-header hr {
+      flex: 1; border: none; border-top: 1px solid var(--border);
+    }
+
+    .row-pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 900px) {
+      .row-pair { grid-template-columns: 1fr; }
+    }
+
+    .chart-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 18px 18px;
+      position: relative;
+      overflow: hidden;
+      min-height: 280px;
+      display: flex; flex-direction: column;
+    }
+    .chart-panel::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--yellow), var(--red));
+    }
+    .chart-head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px; gap: 12px;
+    }
+    .chart-title {
+      font-size: 11px; font-weight: 700; letter-spacing: 1px;
+      text-transform: uppercase; color: var(--text);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .src-badge {
+      font-size: 9px; font-weight: 700; letter-spacing: 0.8px;
+      text-transform: uppercase;
+      padding: 3px 7px; border-radius: 4px;
+      white-space: nowrap;
+    }
+    .src-badge.live { background: rgba(16,185,129,0.15); color: var(--green); border: 1px solid var(--green-dim); }
+    .src-badge.approx { background: rgba(245,158,11,0.15); color: var(--yellow); border: 1px solid var(--yellow-dim); }
+    .src-badge.demo { background: rgba(107,114,128,0.18); color: var(--muted); border: 1px solid var(--border); }
+
+    .chart-canvas-wrap {
+      flex: 1; position: relative; min-height: 180px;
+    }
+    .chart-state {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted); font-size: 11px; text-align: center;
+      padding: 12px;
+    }
+    .chart-state.error { color: var(--red); }
+    .chart-foot {
+      font-size: 10px; color: var(--muted); margin-top: 8px;
+      line-height: 1.4;
+    }
+
+    /* ── HEATMAP ── */
+    .heatmap {
+      flex: 1;
+      display: grid;
+      gap: 2px;
+      font-size: 9px;
+      align-self: stretch;
+    }
+    .hm-cell {
+      padding: 6px 4px;
+      border-radius: 3px;
+      color: #0b0f1a;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.1;
+      transition: transform .15s;
+      cursor: default;
+    }
+    .hm-cell:hover { transform: scale(1.06); z-index: 2; position: relative; }
+    .hm-cell.hdr {
+      background: transparent; color: var(--muted);
+      font-weight: 600; padding: 4px 2px;
+    }
+    .hm-cell.spot { outline: 1px dashed var(--blue); }
+
+    /* ── BASIC GATE (blur + overlay) ── */
+    #charts-wrap { position: relative; }
+    body.gated #charts-wrap > .row-pair {
+      filter: blur(7px);
+      pointer-events: none;
+      user-select: none;
+    }
+    .upgrade-overlay {
+      display: none;
+      position: absolute; inset: 0; z-index: 10;
+      align-items: center; justify-content: center;
+      flex-direction: column; gap: 18px;
+      background: linear-gradient(180deg, rgba(11,15,26,0.4) 0%, rgba(11,15,26,0.75) 100%);
+      border-radius: 12px;
+      padding: 40px 20px;
+      text-align: center;
+    }
+    body.gated .upgrade-overlay { display: flex; }
+    .upgrade-overlay .lock-emoji {
+      font-size: 42px; line-height: 1;
+    }
+    .upgrade-overlay h3 {
+      font-size: 22px; font-weight: 700; color: var(--text);
+      letter-spacing: 0.5px;
+    }
+    .upgrade-overlay p {
+      font-size: 13px; color: var(--muted);
+      max-width: 480px; line-height: 1.55;
+    }
+    .upgrade-overlay .btn-up {
+      background: linear-gradient(135deg, #f59e0b, #ef4444);
+      border: none; color: #0b0f1a;
+      padding: 12px 24px; border-radius: 8px;
+      font-family: inherit; font-size: 12px; font-weight: 700;
+      letter-spacing: 0.5px; cursor: pointer; text-transform: uppercase;
+      transition: transform .15s, box-shadow .2s;
+    }
+    .upgrade-overlay .btn-up:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(245,158,11,0.35);
+    }
+
+    /* ── pricing modal (reused from index) ── */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+      display: none; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; max-width: 980px; width: 100%;
+      max-height: 90vh; overflow-y: auto; padding: 32px;
+      position: relative;
+    }
+    .modal-close {
+      position: absolute; top: 16px; right: 16px;
+      background: none; border: none; color: var(--muted);
+      font-size: 24px; cursor: pointer; line-height: 1;
+    }
+    .modal-close:hover { color: var(--text); }
+    .modal h2 { font-size: 20px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+    .modal-sub { font-size: 12px; color: var(--muted); margin-bottom: 24px; }
+    .pricing-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+    }
+    @media (max-width: 760px) { .pricing-grid { grid-template-columns: 1fr; } }
+    .price-tier {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px;
+      display: flex; flex-direction: column; position: relative;
+    }
+    .price-tier.current { border-color: var(--blue); }
+    .price-tier.featured { border-color: var(--yellow); }
+    .price-tier-tag {
+      position: absolute; top: -10px; right: 14px;
+      font-size: 9px; font-weight: 700; letter-spacing: 1px;
+      padding: 3px 8px; border-radius: 4px; text-transform: uppercase;
+    }
+    .price-tier.current .price-tier-tag { background: var(--blue); color: #fff; }
+    .price-tier.featured .price-tier-tag { background: var(--yellow); color: #0b0f1a; }
+    .price-tier h3 {
+      font-size: 13px; font-weight: 600; letter-spacing: 1px;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 12px;
+    }
+    .price-amount { font-size: 28px; font-weight: 700; color: var(--text); }
+    .price-amount small { font-size: 12px; color: var(--muted); font-weight: 400; }
+    .price-features {
+      list-style: none; margin: 18px 0; padding: 0;
+      font-size: 12px; color: var(--text); line-height: 1.8; flex: 1;
+    }
+    .price-features li::before { content: '✓'; color: var(--green); margin-right: 8px; font-weight: 700; }
+    .price-features li.dim { color: var(--muted); }
+    .price-features li.dim::before { content: '—'; color: var(--muted); }
+    .price-btn {
+      background: var(--surface); border: 1px solid var(--border); color: var(--text);
+      padding: 10px; border-radius: 8px;
+      font-family: inherit; font-size: 12px; font-weight: 600;
+      cursor: pointer; width: 100%;
+    }
+    .price-btn.primary { background: var(--yellow); border-color: var(--yellow); color: #0b0f1a; }
+    .price-btn.disabled { background: var(--surface2); color: var(--muted); cursor: default; }
+
+    /* ── FOOTER ── */
+    footer {
+      max-width: 1400px; margin: 0 auto;
+      padding: 24px;
+      font-size: 11px; color: var(--muted); line-height: 1.7;
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--blue); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── ticker not found / loading ── */
+    .ticker-loading, .ticker-error {
+      padding: 60px 24px; text-align: center;
+      color: var(--muted); font-size: 13px;
+    }
+    .ticker-error { color: var(--red); }
+    .spinner-dot {
+      display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+      background: var(--blue); margin: 0 3px;
+      animation: bounce 1.4s infinite ease-in-out;
+    }
+    .spinner-dot:nth-child(2) { animation-delay: .2s; }
+    .spinner-dot:nth-child(3) { animation-delay: .4s; }
+    @keyframes bounce {
+      0%, 80%, 100% { opacity: 0.3; transform: scale(0.7); }
+      40% { opacity: 1; transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">Q</div>
+    <div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div class="logo-text">Quant Dashboard</div>
+        <span class="tier-badge" id="tier-badge">Basic Plan</span>
+      </div>
+      <div class="logo-sub" id="logo-sub">Stock Detail View</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <a href="./" class="back-link">← Back to Dashboard</a>
+    <div class="user-chip" title="Account (demo)">
+      <span class="user-avatar">S</span>
+      <span style="color:var(--muted);">salman@demo</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- Stock Strip -->
+  <div class="stock-strip" id="stock-strip">
+    <div class="strip-main">
+      <div class="strip-ticker" id="s-ticker">—</div>
+      <div class="strip-name" id="s-name">loading…</div>
+    </div>
+    <div class="strip-stat">
+      <div class="label">Spot</div>
+      <div class="val" id="s-spot">—</div>
+      <div class="sub" id="s-change">—</div>
+    </div>
+    <div class="strip-stat">
+      <div class="label">Volume (today)</div>
+      <div class="val" id="s-vol">—</div>
+      <div class="sub" id="s-vol-sub">shares</div>
+    </div>
+    <div class="strip-stat">
+      <div class="label">P/C (nearest exp)</div>
+      <div class="val" id="s-pcr">—</div>
+      <div class="sub" id="s-pcr-sub">put / call vol</div>
+    </div>
+    <div class="strip-stat">
+      <div class="label">Nearest Expiry</div>
+      <div class="val" id="s-exp">—</div>
+      <div class="sub" id="s-exp-sub">DTE</div>
+    </div>
+  </div>
+
+  <div id="charts-wrap">
+
+    <!-- Row 1 — FLOW -->
+    <div class="section-header"><h2>Calls / Puts Flow</h2><hr/></div>
+    <div class="row-pair">
+      <div class="chart-panel" id="panel-1">
+        <div class="chart-head">
+          <div class="chart-title">📊 Today's Session</div>
+          <div class="src-badge approx" id="b1">Approximated</div>
+        </div>
+        <div class="chart-canvas-wrap"><canvas id="c1"></canvas><div class="chart-state" id="s1">loading…</div></div>
+        <div class="chart-foot">Today's session $ premium per strike (call green, put red), projected onto a typical intraday distribution. Real session totals from Yahoo; intraday tick data requires a paid feed.</div>
+      </div>
+      <div class="chart-panel" id="panel-2">
+        <div class="chart-head">
+          <div class="chart-title">📅 This Week</div>
+          <div class="src-badge demo" id="b2">Demo</div>
+        </div>
+        <div class="chart-canvas-wrap"><canvas id="c2"></canvas><div class="chart-state" id="s2">loading…</div></div>
+        <div class="chart-foot">Daily call vs put $ premium for the current trading week. Free historical flow doesn't exist; production SaaS pulls this from the Theta Data feed.</div>
+      </div>
+    </div>
+
+    <!-- Row 2 — HEATMAP -->
+    <div class="section-header"><h2>Options Heatmap (strikes × expiry)</h2><hr/></div>
+    <div class="row-pair">
+      <div class="chart-panel" id="panel-3">
+        <div class="chart-head">
+          <div class="chart-title">🔥 Today — Volume</div>
+          <div class="src-badge live" id="b3">Live · Yahoo</div>
+        </div>
+        <div class="chart-canvas-wrap" style="overflow:auto;"><div class="heatmap" id="h3"></div><div class="chart-state" id="s3">loading…</div></div>
+        <div class="chart-foot">Color intensity = today's call+put volume per strike. Spot strike outlined. Rows centered around current price.</div>
+      </div>
+      <div class="chart-panel" id="panel-4">
+        <div class="chart-head">
+          <div class="chart-title">💎 Cumulative OI</div>
+          <div class="src-badge approx" id="b4">Approximated</div>
+        </div>
+        <div class="chart-canvas-wrap" style="overflow:auto;"><div class="heatmap" id="h4"></div><div class="chart-state" id="s4">loading…</div></div>
+        <div class="chart-foot">Color intensity = open interest per strike (call + put). Open interest accumulates over the contract's life and is a stand-in for week-cumulative gamma exposure.</div>
+      </div>
+    </div>
+
+    <!-- Row 3 — DARK POOL -->
+    <div class="section-header"><h2>Dark Pool Volume</h2><hr/></div>
+    <div class="row-pair">
+      <div class="chart-panel" id="panel-5">
+        <div class="chart-head">
+          <div class="chart-title">🌊 Today (intraday)</div>
+          <div class="src-badge demo" id="b5">Demo</div>
+        </div>
+        <div class="chart-canvas-wrap"><canvas id="c5"></canvas><div class="chart-state" id="s5">loading…</div></div>
+        <div class="chart-foot">Intraday off-exchange volume by hour. No free public source provides intraday dark-pool tape; production SaaS uses CBOE LiveVol / FINRA real-time feed.</div>
+      </div>
+      <div class="chart-panel" id="panel-6">
+        <div class="chart-head">
+          <div class="chart-title">📈 This Week (daily)</div>
+          <div class="src-badge live" id="b6">Live · FINRA</div>
+        </div>
+        <div class="chart-canvas-wrap"><canvas id="c6"></canvas><div class="chart-state" id="s6">loading…</div></div>
+        <div class="chart-foot">Daily consolidated short volume from FINRA Reg-SHO files — free, T+1 publish. Proxy for off-exchange interest at daily granularity.</div>
+      </div>
+    </div>
+
+    <!-- Basic-mode gate overlay -->
+    <div class="upgrade-overlay">
+      <div class="lock-emoji">🔒</div>
+      <h3>Stock Detail is a Pro Feature</h3>
+      <p>Per-stock options flow, strike heatmaps, and dark-pool activity are part of the Pro plan. Upgrade for unlimited stock lookups + real-time charts.</p>
+      <button class="btn-up" onclick="openPricingModal()">⚡ Upgrade to Pro — $79/mo</button>
+    </div>
+
+  </div>
+
+</main>
+
+<!-- Pricing modal -->
+<div class="modal-overlay" id="pricing-modal" onclick="if(event.target===this) closePricingModal()">
+  <div class="modal">
+    <button class="modal-close" onclick="closePricingModal()">×</button>
+    <h2>Choose Your Plan</h2>
+    <div class="modal-sub">Cancel anytime · 7-day free trial on paid tiers · prices in USD</div>
+    <div class="pricing-grid">
+      <div class="price-tier">
+        <h3>Free</h3>
+        <div class="price-amount">$0<small> / forever</small></div>
+        <ul class="price-features">
+          <li>15-min delayed</li>
+          <li>5 fixed tickers</li>
+          <li>Basic GEX + PCR</li>
+          <li class="dim">Stock detail view</li>
+          <li class="dim">API</li>
+        </ul>
+        <button class="price-btn disabled">Public dashboard</button>
+      </div>
+      <div class="price-tier current">
+        <span class="price-tier-tag">Current</span>
+        <h3>Basic</h3>
+        <div class="price-amount">$29<small> / mo</small></div>
+        <ul class="price-features">
+          <li>Real-time data</li>
+          <li>25 tickers</li>
+          <li>Full options table</li>
+          <li class="dim">Stock detail view</li>
+          <li class="dim">Custom watchlists / Alerts / API</li>
+        </ul>
+        <button class="price-btn disabled">You are here</button>
+      </div>
+      <div class="price-tier featured">
+        <span class="price-tier-tag">Best Value</span>
+        <h3>Pro</h3>
+        <div class="price-amount">$79<small> / mo</small></div>
+        <ul class="price-features">
+          <li>Everything in Basic</li>
+          <li><b>Stock detail (this view!)</b></li>
+          <li>Unlimited watchlists</li>
+          <li>Price + flow alerts</li>
+          <li>Historical backtest + API</li>
+        </ul>
+        <button class="price-btn primary" onclick="alert('Stripe checkout coming in production — this is a UI preview.'); closePricingModal();">Start 7-day trial</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <strong style="color:var(--blue)">v3 Stock Detail</strong> — per-stock deep dive backed by Yahoo Finance (via our Render proxy) and FINRA Reg-SHO daily files.
+  Free real-time options/dark-pool data is largely paywalled; panels are clearly labeled <span class="src-badge live" style="font-size:8px;">Live</span> / <span class="src-badge approx" style="font-size:8px;">Approximated</span> / <span class="src-badge demo" style="font-size:8px;">Demo</span> so you always know the data provenance.
+  In production the demo panels are filled by the licensed Theta Data feed.
+  &nbsp;·&nbsp; <a href="./glossary-gex.html">📖 GEX primer</a>
+  &nbsp;·&nbsp; <a href="#" onclick="openPricingModal(); return false;">💳 Pricing</a>
+  &nbsp;·&nbsp; <a href="./">← back to main dashboard</a>
+</footer>
+
+<script>
+  // ── config ──────────────────────────────────────────────────────────
+  const PROXY_BASE = 'https://trading-dashboard-v2.onrender.com';
+  const V2_SNAPSHOT = 'https://iisalman.github.io/trading-dashboard-v2/data/snapshot.json';
+  const FETCH_TIMEOUT_MS = 95000;  // accommodate Render cold start
+
+  // ── plan / gating ───────────────────────────────────────────────────
+  function getPlan() {
+    return localStorage.getItem('v3_plan') === 'pro' ? 'pro' : 'basic';
+  }
+  function applyPlanUI() {
+    const plan = getPlan();
+    document.body.classList.toggle('gated', plan !== 'pro');
+    const badge = document.getElementById('tier-badge');
+    if (badge) {
+      badge.textContent = plan === 'pro' ? 'Pro Plan' : 'Basic Plan';
+      badge.classList.toggle('pro', plan === 'pro');
+    }
+    const sub = document.getElementById('logo-sub');
+    if (sub) sub.textContent = plan === 'pro'
+      ? 'Pro · per-stock deep dive'
+      : 'Stock Detail (Pro only)';
+  }
+
+  function openPricingModal() {
+    document.getElementById('pricing-modal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closePricingModal() {
+    document.getElementById('pricing-modal').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closePricingModal(); });
+
+  // ── fetch helpers ───────────────────────────────────────────────────
+  function fetchJSON(url) {
+    return fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
+      .then(r => r.ok ? r.json() : r.json().then(b => Promise.reject(new Error(b.error || ('HTTP ' + r.status)))));
+  }
+  const fetchChart    = (t, range='1d') => fetchJSON(`${PROXY_BASE}/yahoo/chart/${t}?range=${range}`);
+  const fetchOptions  = (t) =>             fetchJSON(`${PROXY_BASE}/yahoo/options/${t}`);
+  const fetchDarkpool = (t, days=5) =>     fetchJSON(`${PROXY_BASE}/finra/darkpool/${t}?days=${days}`);
+  const fetchSnapshot = () =>              fetchJSON(V2_SNAPSHOT);
+
+  function setState(id, msg, isError=false) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = msg ? 'flex' : 'none';
+    el.textContent = msg || '';
+    el.classList.toggle('error', !!isError);
+  }
+
+  // ── format helpers ──────────────────────────────────────────────────
+  const fmtMoney = (n) => {
+    if (n == null) return '—';
+    if (Math.abs(n) >= 1e9) return '$' + (n/1e9).toFixed(2) + 'B';
+    if (Math.abs(n) >= 1e6) return '$' + (n/1e6).toFixed(2) + 'M';
+    if (Math.abs(n) >= 1e3) return '$' + (n/1e3).toFixed(1) + 'K';
+    return '$' + n.toFixed(2);
+  };
+  const fmtNum = (n) => {
+    if (n == null) return '—';
+    if (Math.abs(n) >= 1e9) return (n/1e9).toFixed(2) + 'B';
+    if (Math.abs(n) >= 1e6) return (n/1e6).toFixed(2) + 'M';
+    if (Math.abs(n) >= 1e3) return (n/1e3).toFixed(1) + 'K';
+    return String(n);
+  };
+  const fmtPct = (n, decimals=2) => (n == null ? '—' : (n >= 0 ? '+' : '') + n.toFixed(decimals) + '%');
+
+  // ── header strip ────────────────────────────────────────────────────
+  function renderStrip(ticker, chartData, optsData, snapshot) {
+    document.getElementById('s-ticker').textContent = ticker;
+
+    if (chartData && chartData.spot != null) {
+      document.getElementById('s-spot').textContent = '$' + chartData.spot.toFixed(2);
+      if (chartData.previous_close != null) {
+        const ch = chartData.spot - chartData.previous_close;
+        const pct = (ch / chartData.previous_close) * 100;
+        const el = document.getElementById('s-change');
+        el.textContent = (ch >= 0 ? '▲ ' : '▼ ') + Math.abs(ch).toFixed(2) + ' (' + fmtPct(pct) + ')';
+        el.parentElement.querySelector('.val').classList.toggle('up', ch >= 0);
+        el.parentElement.querySelector('.val').classList.toggle('down', ch < 0);
+      }
+      if (chartData.candles && chartData.candles.length) {
+        const totalVol = chartData.candles.reduce((a, c) => a + (c.v || 0), 0);
+        document.getElementById('s-vol').textContent = fmtNum(totalVol);
+      }
+    } else {
+      document.getElementById('s-spot').textContent = 'n/a';
+    }
+
+    if (optsData && optsData.expiries && optsData.expiries.length) {
+      const exp = optsData.expiries[0];
+      let cv = 0, pv = 0;
+      exp.strikes.forEach(s => { cv += s.call_vol||0; pv += s.put_vol||0; });
+      const pcr = cv > 0 ? (pv / cv) : null;
+      document.getElementById('s-pcr').textContent = pcr == null ? 'n/a' : pcr.toFixed(2);
+      document.getElementById('s-pcr').classList.toggle('up', pcr != null && pcr < 0.7);
+      document.getElementById('s-pcr').classList.toggle('down', pcr != null && pcr > 1.5);
+      document.getElementById('s-exp').textContent = exp.date;
+      document.getElementById('s-exp-sub').textContent = exp.dte != null ? exp.dte + ' days' : '';
+    } else {
+      document.getElementById('s-pcr').textContent = 'n/a';
+      document.getElementById('s-exp').textContent = 'n/a';
+    }
+
+    // Name: try the v2 snapshot first (has friendly names for the 25 tickers)
+    if (snapshot && Array.isArray(snapshot.tickers)) {
+      const hit = snapshot.tickers.find(x => (x.ticker || '').toUpperCase() === ticker);
+      if (hit && hit.name) {
+        document.getElementById('s-name').textContent = hit.name;
+        return;
+      }
+    }
+    document.getElementById('s-name').textContent = 'US equity · options-enabled';
+  }
+
+  // ── chart helpers ───────────────────────────────────────────────────
+  const CHART_OPTS_BAR = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color: '#94a3b8', font: { size: 10 }}},
+      tooltip: { backgroundColor: '#0b0f1a', titleColor: '#e2e8f0', bodyColor: '#e2e8f0',
+                 borderColor: '#1f2d42', borderWidth: 1 }
+    },
+    scales: {
+      x: { ticks: { color: '#64748b', font: { size: 9 }}, grid: { display: false }},
+      y: { ticks: { color: '#64748b', font: { size: 9 }, callback: v => '$' + (Math.abs(v) >= 1e6 ? (v/1e6).toFixed(1)+'M' : Math.abs(v) >= 1e3 ? (v/1e3).toFixed(0)+'K' : v) },
+           grid: { color: 'rgba(31,45,66,0.5)' }, beginAtZero: true }
+    }
+  };
+
+  let _charts = {};
+  function makeBarChart(id, labels, callData, putData, yIsDollars=true) {
+    const ctx = document.getElementById(id);
+    if (_charts[id]) _charts[id].destroy();
+    const opts = JSON.parse(JSON.stringify(CHART_OPTS_BAR));
+    if (!yIsDollars) {
+      opts.scales.y.ticks.callback = v => fmtNum(v);
+    }
+    _charts[id] = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Calls', data: callData, backgroundColor: 'rgba(16,185,129,0.7)', borderColor: '#10b981', borderWidth: 1 },
+          { label: 'Puts',  data: putData,  backgroundColor: 'rgba(239,68,68,0.7)',  borderColor: '#ef4444', borderWidth: 1 },
+        ]
+      },
+      options: opts
+    });
+  }
+
+  // ── chart 1: flow today (real session totals + intraday shape) ──────
+  function renderFlowToday(optsData) {
+    setState('s1', '', false);
+    if (!optsData || !optsData.expiries || !optsData.expiries.length) {
+      setState('s1', 'No options data for this ticker', true); return;
+    }
+    const exp = optsData.expiries[0];
+    // Today's $ premium per strike: vol × lastPrice × 100
+    let totCall = 0, totPut = 0;
+    exp.strikes.forEach(s => {
+      totCall += (s.call_vol || 0) * (s.call_last || 0) * 100;
+      totPut  += (s.put_vol  || 0) * (s.put_last  || 0) * 100;
+    });
+    // Typical intraday U-shape weights (9:30–16:00 in 30-min buckets, 13 buckets)
+    const weights = [0.15, 0.10, 0.06, 0.05, 0.06, 0.06, 0.06, 0.06, 0.06, 0.07, 0.08, 0.09, 0.10];
+    const labels = ['09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30'];
+    const callBars = weights.map(w => totCall * w);
+    const putBars  = weights.map(w => totPut  * w);
+    makeBarChart('c1', labels, callBars, putBars, true);
+  }
+
+  // ── chart 2: flow week (demo — plausible daily distribution) ────────
+  function renderFlowWeek(ticker, optsData) {
+    setState('s2', '', false);
+    // Seed plausible numbers off the real session total (if available)
+    let baseDaily = 4e6;
+    if (optsData && optsData.expiries && optsData.expiries.length) {
+      const exp = optsData.expiries[0];
+      let tot = 0;
+      exp.strikes.forEach(s => {
+        tot += (s.call_vol||0)*(s.call_last||0)*100 + (s.put_vol||0)*(s.put_last||0)*100;
+      });
+      if (tot > 0) baseDaily = tot;
+    }
+    // Deterministic per-ticker variation so the demo is consistent on reload
+    let seed = 0; for (const c of ticker) seed = (seed * 31 + c.charCodeAt(0)) >>> 0;
+    const rand = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return (seed / 0xffffffff); };
+    const days = ['Mon','Tue','Wed','Thu','Fri'];
+    const callBars = days.map(() => baseDaily * (0.6 + rand() * 0.9));
+    const putBars  = days.map(() => baseDaily * (0.45 + rand() * 0.8));
+    makeBarChart('c2', days, callBars, putBars, true);
+  }
+
+  // ── chart 3 + 4: heatmaps ───────────────────────────────────────────
+  function renderHeatmap(id, optsData, mode) {
+    const el = document.getElementById(id);
+    const stateId = id.replace('h', 's');
+    setState(stateId, '', false);
+    if (!optsData || !optsData.expiries || !optsData.expiries.length) {
+      setState(stateId, 'No options data for this ticker', true); return;
+    }
+    const exps = optsData.expiries;
+    const spot = optsData.spot || 0;
+
+    // Build union of strikes across expiries, then keep ±10 around spot
+    const allStrikes = new Set();
+    exps.forEach(e => e.strikes.forEach(s => allStrikes.add(s.K)));
+    let strikes = Array.from(allStrikes).sort((a,b) => a-b);
+    if (spot) {
+      // Find closest strike to spot, take 10 above and 10 below
+      let nearestIdx = 0, bestDiff = Infinity;
+      strikes.forEach((K, i) => {
+        const d = Math.abs(K - spot);
+        if (d < bestDiff) { bestDiff = d; nearestIdx = i; }
+      });
+      const lo = Math.max(0, nearestIdx - 10);
+      const hi = Math.min(strikes.length, nearestIdx + 11);
+      strikes = strikes.slice(lo, hi);
+    } else {
+      strikes = strikes.slice(0, 21);
+    }
+
+    // Compute value per (strike, expiry) cell
+    const cells = {};   // key: strike|expiryIdx -> value
+    let maxVal = 0;
+    exps.forEach((exp, ei) => {
+      const map = {};
+      exp.strikes.forEach(s => map[s.K] = s);
+      strikes.forEach(K => {
+        const row = map[K];
+        const v = row ? (mode === 'vol'
+          ? (row.call_vol||0) + (row.put_vol||0)
+          : (row.call_oi||0)  + (row.put_oi||0))
+          : 0;
+        cells[K + '|' + ei] = v;
+        if (v > maxVal) maxVal = v;
+      });
+    });
+
+    // Render CSS grid: 1 header col (strike) + N expiry cols, header row + strike rows
+    const ncols = exps.length;
+    el.style.gridTemplateColumns = `minmax(60px, 0.6fr) repeat(${ncols}, 1fr)`;
+    let html = '<div class="hm-cell hdr">Strike \\ Exp</div>';
+    exps.forEach(e => html += `<div class="hm-cell hdr">${e.date.slice(5)}</div>`);
+
+    // Strikes top-to-bottom: highest strike at top (so visually intuitive)
+    [...strikes].reverse().forEach(K => {
+      const isSpot = spot && Math.abs(K - spot) === Math.min(...strikes.map(x => Math.abs(x - spot)));
+      html += `<div class="hm-cell hdr" style="text-align:right; padding-right:6px;${isSpot ? 'color:var(--blue);font-weight:700' : ''}">${K}</div>`;
+      exps.forEach((exp, ei) => {
+        const v = cells[K + '|' + ei] || 0;
+        const intensity = maxVal > 0 ? Math.sqrt(v / maxVal) : 0;  // sqrt to spread color
+        const L = 18 + intensity * 65;   // 18% (dark) to 83% (bright yellow)
+        const bg = intensity > 0.01 ? `hsl(45, 95%, ${L}%)` : 'rgba(26,34,53,0.5)';
+        const txt = v > 0 ? fmtNum(v) : '·';
+        const tooltip = `${K} · ${exp.date} · ${v.toLocaleString()}`;
+        html += `<div class="hm-cell ${isSpot ? 'spot' : ''}" style="background:${bg}; color:${intensity > 0.3 ? '#0b0f1a' : 'var(--muted)'};" title="${tooltip}">${txt}</div>`;
+      });
+    });
+    el.innerHTML = html;
+  }
+
+  // ── chart 5: dark pool today (demo) ─────────────────────────────────
+  function renderDarkPoolToday(ticker, chartData) {
+    setState('s5', '', false);
+    // Seed off real today volume if available
+    let baseHourly = 1e5;
+    if (chartData && chartData.candles && chartData.candles.length) {
+      const totalVol = chartData.candles.reduce((a, c) => a + (c.v || 0), 0);
+      baseHourly = (totalVol * 0.35) / 7;  // assume ~35% off-exchange, 7 hourly buckets
+    }
+    let seed = 0; for (const c of ticker) seed = (seed * 31 + c.charCodeAt(0)) >>> 0;
+    const rand = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return (seed / 0xffffffff); };
+    const hours = ['09:30','10:30','11:30','12:30','13:30','14:30','15:30'];
+    // Mostly the dark pool prints concentrate near open + close (typical pattern)
+    const shape = [1.6, 1.0, 0.7, 0.55, 0.7, 1.0, 1.7];
+    const offBars = shape.map((w, i) => baseHourly * w * (0.85 + rand() * 0.3));
+    const litBars = offBars.map((v) => v * (1.5 + rand() * 0.8));  // lit > dark typically
+
+    const ctx = document.getElementById('c5');
+    if (_charts['c5']) _charts['c5'].destroy();
+    const opts = JSON.parse(JSON.stringify(CHART_OPTS_BAR));
+    opts.scales.y.ticks.callback = v => fmtNum(v);
+    _charts['c5'] = new Chart(ctx, {
+      type: 'bar',
+      data: { labels: hours, datasets: [
+        { label: 'Off-exchange (dark)', data: offBars, backgroundColor: 'rgba(139,92,246,0.7)', borderColor: '#8b5cf6', borderWidth: 1 },
+        { label: 'Lit exchange',        data: litBars, backgroundColor: 'rgba(100,116,139,0.5)', borderColor: '#64748b', borderWidth: 1 },
+      ]},
+      options: opts
+    });
+  }
+
+  // ── chart 6: dark pool week (real FINRA) ────────────────────────────
+  function renderDarkPoolWeek(ticker, darkData) {
+    setState('s6', '', false);
+    if (!darkData || !darkData.days || !darkData.days.length) {
+      setState('s6', 'FINRA Reg-SHO data unavailable for this ticker yet. (Files publish T+1; very illiquid or just-IPO\\'d names may have no rows.)', true);
+      return;
+    }
+    const labels = darkData.days.map(d => d.date.slice(5));
+    const totalBars = darkData.days.map(d => d.total_vol || 0);
+    const shortBars = darkData.days.map(d => d.short_vol || 0);
+
+    const ctx = document.getElementById('c6');
+    if (_charts['c6']) _charts['c6'].destroy();
+    const opts = JSON.parse(JSON.stringify(CHART_OPTS_BAR));
+    opts.scales.y.ticks.callback = v => fmtNum(v);
+    _charts['c6'] = new Chart(ctx, {
+      type: 'bar',
+      data: { labels, datasets: [
+        { label: 'Total consolidated', data: totalBars, backgroundColor: 'rgba(59,130,246,0.5)', borderColor: '#3b82f6', borderWidth: 1 },
+        { label: 'Short volume',       data: shortBars, backgroundColor: 'rgba(139,92,246,0.7)', borderColor: '#8b5cf6', borderWidth: 1 },
+      ]},
+      options: opts
+    });
+  }
+
+  // ── boot ────────────────────────────────────────────────────────────
+  async function boot() {
+    applyPlanUI();
+    const params = new URLSearchParams(location.search);
+    const ticker = (params.get('ticker') || '').trim().toUpperCase();
+    if (!ticker || !/^[A-Z]{1,5}([.\-][A-Z])?$/.test(ticker)) {
+      document.querySelector('main').innerHTML =
+        '<div class="ticker-error">No valid ticker in URL. Try <a href="./stock.html?ticker=NVDA" style="color:var(--blue)">stock.html?ticker=NVDA</a></div>';
+      return;
+    }
+    document.title = ticker + ' — Stock Detail · Quant Dashboard v3';
+
+    const plan = getPlan();
+
+    // Always fetch the header-strip data (gives Basic users a real-data taste)
+    let chartData = null, optsData = null, darkData = null, snapshot = null;
+    const tasks = [
+      fetchChart(ticker, '1d').then(d => chartData = d).catch(e => { console.warn('chart 1d:', e.message); }),
+      fetchOptions(ticker)   .then(d => optsData  = d).catch(e => { console.warn('options:', e.message); }),
+      fetchSnapshot()        .then(d => snapshot  = d).catch(e => { console.warn('snapshot:', e.message); }),
+    ];
+    if (plan === 'pro') {
+      tasks.push(fetchDarkpool(ticker, 5).then(d => darkData = d).catch(e => { console.warn('finra:', e.message); }));
+    }
+
+    // Render strip ASAP (don't block on slower tasks if possible)
+    await Promise.allSettled(tasks);
+    renderStrip(ticker, chartData, optsData, snapshot);
+
+    if (plan !== 'pro') {
+      // In gated mode, render placeholders only (no further fetches)
+      ['s1','s2','s3','s4','s5','s6'].forEach(id => setState(id, '· · ·'));
+      return;
+    }
+
+    // Charts
+    renderFlowToday(optsData);
+    renderFlowWeek(ticker, optsData);
+    renderHeatmap('h3', optsData, 'vol');
+    renderHeatmap('h4', optsData, 'oi');
+    renderDarkPoolToday(ticker, chartData);
+    renderDarkPoolWeek(ticker, darkData);
+  }
+
+  boot();
+</script>
+
+</body>
+</html>

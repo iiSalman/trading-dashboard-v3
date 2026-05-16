@@ -860,6 +860,57 @@
     .api-code .key { color: var(--yellow); }
     .api-code .str { color: var(--blue); }
 
+    /* ── ticker link in main watchlist table → opens stock detail ── */
+    .ticker-link {
+      color: var(--text); text-decoration: none;
+      border-bottom: 1px dashed transparent;
+      transition: color .15s, border-color .15s;
+    }
+    .ticker-link:hover {
+      color: var(--blue);
+      border-bottom-color: var(--blue);
+    }
+
+    /* ── header search (Pro only) ── */
+    .header-search {
+      position: relative;
+    }
+    .header-search input {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); padding: 7px 10px 7px 26px;
+      border-radius: 8px; font-family: inherit; font-size: 11px;
+      width: 160px; transition: border-color .2s, width .2s;
+    }
+    .header-search input:focus {
+      outline: none; border-color: var(--blue);
+      width: 200px;
+    }
+    .header-search::before {
+      content: '🔍'; position: absolute;
+      left: 8px; top: 50%; transform: translateY(-50%);
+      font-size: 11px; pointer-events: none; opacity: 0.7;
+    }
+    .search-autocomplete {
+      display: none;
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 4px 0;
+      max-height: 280px; overflow-y: auto;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+      z-index: 110;
+    }
+    .search-autocomplete.open { display: block; }
+    .search-ac-row {
+      padding: 7px 12px; cursor: pointer; font-size: 11px;
+      display: flex; align-items: center; justify-content: space-between;
+      transition: background .12s;
+    }
+    .search-ac-row:hover, .search-ac-row.active {
+      background: var(--surface2);
+    }
+    .search-ac-row .ac-ticker { color: var(--text); font-weight: 600; }
+    .search-ac-row .ac-sub { color: var(--muted); font-size: 10px; }
+
     /* gold accent on Pro tier — tiny ribbon on header in Pro mode */
     body.plan-pro header::after {
       content: '';
@@ -909,6 +960,14 @@
     <div class="plan-toggle" role="tablist" aria-label="Plan view">
       <button class="basic" id="toggle-basic" onclick="setPlan('basic')">Basic</button>
       <button class="pro" id="toggle-pro" onclick="setPlan('pro')">Pro</button>
+    </div>
+    <div class="header-search pro-only">
+      <input type="text" id="hdr-search" placeholder="Search ticker…" maxlength="6"
+             autocomplete="off" spellcheck="false"
+             oninput="onSearchInput(this.value)"
+             onkeydown="onSearchKey(event)"
+             onblur="setTimeout(closeSearchAc, 150)" />
+      <div class="search-autocomplete" id="hdr-search-ac"></div>
     </div>
     <button class="btn-upgrade" onclick="setPlan('pro')" title="Preview the Pro tier interface">
       ⚡ Upgrade to Pro
@@ -1450,6 +1509,74 @@
     document.getElementById('api-token').textContent = t;
   }
 
+  // ── header ticker search (Pro only) ─────────────────────────────────
+  function _allTickers() {
+    const out = [];
+    try {
+      // pull from the rendered watchlist table (always populated after fetchData)
+      document.querySelectorAll('#watchlist-body .td-ticker a.ticker-link').forEach(a => {
+        const t = a.textContent.trim().toUpperCase();
+        if (t && !out.includes(t)) out.push(t);
+      });
+    } catch (_) {}
+    return out;
+  }
+  function _navigateToStock(t) {
+    t = (t || '').trim().toUpperCase();
+    if (!t || !/^[A-Z]{1,5}([.\-][A-Z])?$/.test(t)) return;
+    location.href = './stock.html?ticker=' + encodeURIComponent(t);
+  }
+  let _acIdx = -1;
+  function onSearchInput(v) {
+    const ac = document.getElementById('hdr-search-ac');
+    v = (v || '').trim().toUpperCase();
+    if (!v) { ac.classList.remove('open'); ac.innerHTML = ''; _acIdx = -1; return; }
+    const all = _allTickers();
+    const hits = all.filter(t => t.startsWith(v)).slice(0, 8);
+    let html = '';
+    hits.forEach(t => {
+      html += `<div class="search-ac-row" onmousedown="_navigateToStock('${t}')">
+        <span class="ac-ticker">${t}</span><span class="ac-sub">in watchlist</span>
+      </div>`;
+    });
+    if (/^[A-Z]{1,5}([.\-][A-Z])?$/.test(v) && !hits.includes(v)) {
+      html += `<div class="search-ac-row" onmousedown="_navigateToStock('${v}')">
+        <span class="ac-ticker">→ ${v}</span><span class="ac-sub">any US stock</span>
+      </div>`;
+    }
+    if (!html) { ac.classList.remove('open'); ac.innerHTML = ''; _acIdx = -1; return; }
+    ac.innerHTML = html;
+    ac.classList.add('open');
+    _acIdx = -1;
+  }
+  function onSearchKey(e) {
+    const ac = document.getElementById('hdr-search-ac');
+    const rows = ac.querySelectorAll('.search-ac-row');
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (_acIdx >= 0 && _acIdx < rows.length) {
+        rows[_acIdx].dispatchEvent(new MouseEvent('mousedown'));
+      } else {
+        _navigateToStock(e.target.value);
+      }
+      return;
+    }
+    if (e.key === 'Escape') { closeSearchAc(); e.target.blur(); return; }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!rows.length) return;
+      _acIdx += (e.key === 'ArrowDown' ? 1 : -1);
+      if (_acIdx < 0) _acIdx = rows.length - 1;
+      if (_acIdx >= rows.length) _acIdx = 0;
+      rows.forEach((r, i) => r.classList.toggle('active', i === _acIdx));
+    }
+  }
+  function closeSearchAc() {
+    const ac = document.getElementById('hdr-search-ac');
+    if (ac) ac.classList.remove('open');
+    _acIdx = -1;
+  }
+
   let proInitialized = false;
   function initProWidgets() {
     if (proInitialized) return;
@@ -1775,7 +1902,7 @@
     tbody.innerHTML = tickers.map(t => {
       if (t.error && !t.price) {
         return `<tr>
-          <td class="td-ticker">${t.ticker}</td>
+          <td class="td-ticker"><a href="./stock.html?ticker=${t.ticker}" class="ticker-link" title="Open stock detail (Pro)">${t.ticker}</a></td>
           <td colspan="12" class="error-tag">Error: ${t.error}</td>
         </tr>`;
       }
@@ -1793,7 +1920,7 @@
       const chgCls = t.change >= 0 ? 'up' : 'down';
       const pcrVal = t.pcr_vol;
       return `<tr>
-        <td class="td-ticker">${t.ticker}</td>
+        <td class="td-ticker"><a href="./stock.html?ticker=${t.ticker}" class="ticker-link" title="Open stock detail (Pro)">${t.ticker}</a></td>
         <td class="td-price">$${fmt(t.price)}</td>
         <td class="td-change ${chgCls}">${t.change >= 0 ? '+' : ''}${t.change}%</td>
         <td class="td-score"><span class="score-badge score-${sc}">${sc}</span></td>
