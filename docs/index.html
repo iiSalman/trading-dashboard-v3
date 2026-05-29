@@ -1286,34 +1286,34 @@
   const DATA_URL = 'https://iisalman.github.io/trading-dashboard-v2/data/snapshot.json';
 
   // Consensus analyst 12-month price targets (avg / low / high), pulled from
-  // stockanalysis.com on 2026-05-17. QQQ is an ETF so no analyst PT.
+  // stockanalysis.com on 2026-05-29. QQQ is an ETF so no analyst PT.
   // Refresh by re-running the fetch script that populated this map.
   const AVG_PT = {
-    RKLB:  { pt: 94.29,  low: 50,    high: 120  },
-    MSTR:  { pt: 347.54, low: 54,    high: 570  },
-    HIMS:  { pt: 30.17,  low: 18,    high: 68   },
-    META:  { pt: 836.39, low: 700,   high: 1015 },
-    QQQ:   { pt: null,   low: null,  high: null },
-    CRM:   { pt: 278.40, low: 188,   high: 405  },
-    CRWV:  { pt: 130.78, low: 32,    high: 200  },
-    MSFT:  { pt: 569.46, low: 415,   high: 680  },
-    GOOGL: { pt: 391.60, low: 190,   high: 515  },
-    BABA:  { pt: 187.57, low: 135,   high: 225  },
-    PANW:  { pt: 219.91, low: 157,   high: 275  },
-    NVDA:  { pt: 273.62, low: 195,   high: 360  },
-    AAPL:  { pt: 307.28, low: 200,   high: 400  },
-    AMZN:  { pt: 306.00, low: 175,   high: 370  },
-    OKLO:  { pt: 100.94, low: 60,    high: 150  },
-    PLTR:  { pt: 194.17, low: 90,    high: 255  },
-    INTC:  { pt: 68.03,  low: 25,    high: 124  },
-    AVGO:  { pt: 457.79, low: 300,   high: 582  },
-    BA:    { pt: 269.75, low: 212,   high: 298  },
-    MU:    { pt: 482.90, low: 150,   high: 1000 },
-    SNDK:  { pt: 953.35, low: 50,    high: 2000 },
-    TSLA:  { pt: 405.47, low: 24.86, high: 600  },
-    ARM:   { pt: 210.50, low: 120,   high: 326  },
-    IREN:  { pt: 66.20,  low: 29,    high: 90   },
-    AMD:   { pt: 388.85, low: 150,   high: 530  }
+    RKLB:  { pt: 103.91, low: null, high: null },
+    MSTR:  { pt: 380.79, low: null, high: null },
+    HIMS:  { pt: 26.61 , low: null, high: null },
+    META:  { pt: 826.75, low: null, high: null },
+    QQQ:   { pt: null  , low: null, high: null },
+    CRM:   { pt: 255.55, low: null, high: null },
+    CRWV:  { pt: 138.9 , low: null, high: null },
+    MSFT:  { pt: 560.63, low: null, high: null },
+    GOOGL: { pt: 430.72, low: null, high: null },
+    BABA:  { pt: 191.71, low: null, high: null },
+    PANW:  { pt: 230.1 , low: null, high: null },
+    NVDA:  { pt: 304.59, low: 225 , high: 500  },
+    AAPL:  { pt: 310.51, low: null, high: null },
+    AMZN:  { pt: 312.63, low: null, high: null },
+    OKLO:  { pt: 88.89 , low: null, high: null },
+    PLTR:  { pt: 183.73, low: null, high: null },
+    INTC:  { pt: 87.76 , low: null, high: null },
+    AVGO:  { pt: 481.97, low: null, high: null },
+    BA:    { pt: 270   , low: null, high: null },
+    MU:    { pt: 702.98, low: null, high: null },
+    SNDK:  { pt: 1552  , low: null, high: null },
+    TSLA:  { pt: 411.89, low: null, high: null },
+    ARM:   { pt: 234.03, low: null, high: null },
+    IREN:  { pt: 79.84 , low: null, high: null },
+    AMD:   { pt: 472.17, low: null, high: null }
   };
 
   function openPricingModal() {
